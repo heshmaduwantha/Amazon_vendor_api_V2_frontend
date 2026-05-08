@@ -1,0 +1,132 @@
+<div class="dashboard-container min-h-screen bg-black text-slate-200">
+  <!-- Header (Synchronized with Sidebar) -->
+  <div class="dashboard-header flex justify-content-between align-items-center border-gray-900">
+    <div>
+      <h1 class="text-3xl font-bold tracking-tight uppercase tracking-widest m-0 text-white">
+        VENDOR API <span class="text-orange-500 underline underline-offset-8 decoration-2">v2.0</span>
+      </h1>
+      <p class="text-gray-500 mt-2 text-[10px] font-mono tracking-widest uppercase opacity-60">
+        Enterprise SP-API Synchronization Core
+      </p>
+    </div>
+    
+    <div class="flex align-items-center gap-4">
+      <div class="flex align-items-center gap-4 p-2 border-round-lg shadow-4 bg-gray-950 border-gray-800 border-1">
+        <div class="flex flex-column align-items-end">
+          <span class="text-[9px] uppercase tracking-widest font-mono text-gray-600">Real-Time Core Status</span>
+          <span class="text-green-500 font-mono text-sm flex align-items-center gap-2">
+            <span class="h-2 w-2 bg-green-500 border-round-full animate-pulse shadow-4" style="box-shadow: 0 0 10px #10b981"></span> OPERATIONAL
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="dashboard-body p-4 md:p-8">
+    <!-- 1. System Health Cards -->
+    <div class="grid mb-8">
+      @for (card of healthMetrics; track card.label) {
+        <div class="col-12 md:col-6 lg:col-3">
+          <div class="dashboard-card dark-card">
+            <div class="flex justify-content-between align-items-start mb-4">
+              <i [class]="card.icon" [ngClass]="card.color" style="font-size: 1.25rem; filter: drop-shadow(0 0 5px currentColor)"></i>
+              <span class="text-[9px] font-bold uppercase tracking-widest font-mono text-gray-600">Live Link</span>
+            </div>
+            <h3 class="accent-heading mb-2">{{card.label}}</h3>
+            <div class="text-2xl data-value text-white">{{card.value}}</div>
+            <p class="text-[9px] text-gray-500 mt-3 font-mono font-italic opacity-70">{{card.sub}}</p>
+          </div>
+        </div>
+      }
+    </div>
+
+    <div class="grid">
+      <!-- 2. Pipeline State Machine -->
+      <div class="col-12 lg:col-4">
+        <div class="dashboard-card dark-card h-full">
+          <h2 class="accent-heading mb-8 flex align-items-center gap-2">
+            <i class="pi pi-sync text-orange-500"></i> Data Pipeline Status
+          </h2>
+          
+          <p-timeline [value]="pipelineSteps" styleClass="customized-timeline">
+            <ng-template pTemplate="marker" let-step>
+              <span class="flex align-items-center justify-content-center border-round-full border-1 p-2"
+                [ngClass]="{
+                  'bg-green-500 border-green-500 shadow-4': step.state === 'complete',
+                  'bg-transparent border-orange-500 glow-orange': step.state === 'active',
+                  'bg-transparent border-gray-800': step.state === 'pending'
+                }" style="width: 28px; height: 28px;">
+                <i class="pi" [ngClass]="step.state === 'complete' ? 'pi-check text-white' : 'pi-bolt text-orange-500'" style="font-size: 0.8rem"></i>
+              </span>
+            </ng-template>
+            <ng-template pTemplate="content" let-step>
+              <div class="mb-4">
+                <h4 class="text-xs font-mono font-bold m-0 tracking-widest uppercase" [ngClass]="step.state === 'pending' ? 'text-gray-700' : 'text-white'">
+                  {{step.status}}
+                </h4>
+                <p class="text-[10px] text-gray-500 uppercase m-1 font-mono tracking-tighter">{{step.desc}}</p>
+                <span class="text-[9px] font-mono text-gray-700 font-bold">{{step.time}}</span>
+              </div>
+            </ng-template>
+          </p-timeline>
+        </div>
+      </div>
+
+      <!-- 3. Data Tally & Rate Limiter -->
+      <div class="col-12 lg:col-8">
+        <div class="flex flex-column gap-6">
+          
+          <!-- Data Tally Graph -->
+          <div class="dashboard-card dark-card relative overflow-hidden">
+             <div class="flex justify-content-between align-items-center mb-8">
+                <h2 class="accent-heading m-0">Synchronicity Matrix</h2>
+                <div class="flex gap-4 text-[9px] font-bold font-mono">
+                  <span class="flex align-items-center gap-1 text-blue-400"><span class="h-1 w-2 bg-blue-400 border-round-sm shadow-4"></span> PORTAL</span>
+                  <span class="flex align-items-center gap-1 text-orange-400"><span class="h-1 w-2 bg-orange-400 border-round-sm shadow-4"></span> LOCAL</span>
+               </div>
+             </div>
+             
+             <div class="flex align-items-end gap-2 h-10rem px-2 bar-reconciliation">
+                @for (h of [45, 60, 45, 80, 55, 90, 70, 85, 40, 95]; track $index) {
+                  <div class="flex-1 flex flex-column gap-1 align-items-center h-full">
+                     <div class="w-full border-round-sm h-full relative bg-gray-900">
+                        <div [style.height.%]="h" class="w-full bg-blue-600 opacity-20 absolute bottom-0 border-round-sm border-top-1 border-blue-400 bar-segment"></div>
+                        <div [style.height.%]="h-10" class="w-full bg-orange-500 opacity-30 absolute bottom-0 border-round-sm border-top-1 border-orange-400 bar-segment local"></div>
+                     </div>
+                  </div>
+                }
+             </div>
+             <div class="flex justify-content-between mt-4 text-[9px] font-mono text-gray-600 font-bold uppercase tracking-widest">
+                <span>00:00:00z</span>
+                <span class="text-orange-900">Timezone Bridge Protocol Enabled</span>
+                <span>23:59:59z</span>
+             </div>
+          </div>
+
+          <!-- Rate Limiter Wave Monitoring (Real Chart) -->
+          <div class="dashboard-card dark-card">
+             <div class="flex justify-content-between align-items-center mb-8">
+                <h2 class="accent-heading m-0">Rate Limiter Telemetry</h2>
+                <span class="text-[9px] font-mono px-3 py-1 border-round-sm border-1 uppercase tracking-widest font-bold bg-red-950/30 text-red-500 border-red-900">429 Guard: Active</span>
+             </div>
+             
+             <div class="chart-container">
+                <p-chart type="line" [data]="chartData" [options]="chartOptions"></p-chart>
+             </div>
+             
+             <div class="flex justify-content-between align-items-center mt-4 pt-4 border-top-1 border-gray-900">
+              <p class="text-[10px] text-gray-600 font-mono m-0 uppercase tracking-tighter">
+                Current Flow: <span class="text-white font-bold">0.82 TPS</span> | Bucket: <span class="text-orange-500 font-bold">Leaky</span>
+              </p>
+              <div class="flex gap-4 text-[9px] font-mono text-gray-600 font-bold uppercase tracking-widest">
+                 <span class="flex align-items-center gap-1"><span class="h-1 w-3 bg-blue-500 border-round-sm"></span> Limit</span>
+                 <span class="flex align-items-center gap-1"><span class="h-1 w-3 bg-emerald-500 border-round-sm"></span> Flow</span>
+              </div>
+             </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

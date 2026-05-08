@@ -1,0 +1,118 @@
+:host {
+  display: block;
+}
+
+.dashboard-container {
+  padding: 0;
+  transition: background-color 0.4s ease, color 0.4s ease;
+}
+
+.dashboard-header {
+  height: 90px;
+  padding: 0 2rem;
+  border-bottom-width: 1px;
+  border-bottom-style: solid;
+  display: flex;
+  align-items: center;
+  @media screen and (max-width: 768px) {
+    padding: 0 1rem;
+  }
+}
+
+.dashboard-body {
+  padding: 2rem;
+  @media screen and (max-width: 768px) {
+    padding: 1rem;
+  }
+}
+
+.dashboard-card {
+  border-radius: 1rem;
+  padding: 1.5rem;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  border: 1px solid transparent;
+
+  &.dark-card {
+    background: rgba(15, 23, 42, 0.4);
+    border-color: rgba(51, 65, 85, 0.5);
+    backdrop-filter: blur(16px);
+    &:hover {
+      border-color: rgba(249, 115, 22, 0.4);
+      box-shadow: 0 0 30px rgba(249, 115, 22, 0.1);
+    }
+  }
+
+  &.light-card {
+    background: #ffffff;
+    border-color: #e2e8f0;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06); // shadow-sm
+    &:hover {
+      border-color: #cbd5e1;
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
+    }
+  }
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(249, 115, 22, 0.2), transparent);
+    opacity: 0;
+    transition: opacity 0.4s;
+  }
+
+  &:hover::before {
+    opacity: 1;
+  }
+}
+
+.accent-heading {
+  color: #f97316;
+  text-transform: uppercase;
+  font-weight: 900;
+  letter-spacing: 0.3em;
+  font-size: 0.75rem;
+}
+
+.data-value {
+  font-family: 'Roboto Mono', monospace;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+}
+
+.chart-container {
+  position: relative;
+  height: 350px;
+  width: 100%;
+}
+
+::ng-deep .customized-timeline {
+  .p-timeline-event-opposite {
+    display: none;
+  }
+  .p-timeline-event-content {
+    padding: 0 1rem 2rem 1.5rem;
+  }
+  .p-timeline-event-connector {
+    background-color: #e2e8f0;
+    width: 1px;
+  }
+  .p-timeline-event-marker {
+     border: none;
+     background: none;
+  }
+}
+
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .4; }
+}
