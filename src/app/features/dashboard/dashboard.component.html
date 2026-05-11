@@ -1,9 +1,17 @@
-<div class="dashboard-container min-h-screen bg-black text-slate-200">
+<p-toast></p-toast>
+
+<div class="dashboard-container min-h-screen bg-black text-slate-200" *ngIf="syncStatus$ | async as status">
+  
+  <!-- Sync Activity Overlay -->
+  <div *ngIf="status.isSyncing" class="fixed top-0 left-0 w-full h-1 z-50">
+    <div class="h-full bg-orange-500 animate-pulse" style="box-shadow: 0 0 15px #f97316"></div>
+  </div>
+
   <!-- Header (Synchronized with Sidebar) -->
   <div class="dashboard-header flex justify-content-between align-items-center border-gray-900">
     <div>
       <h1 class="text-3xl font-bold tracking-tight uppercase tracking-widest m-0 text-white">
-        VENDOR API <span class="text-orange-500 underline underline-offset-8 decoration-2">v2.0</span>
+        VENDOR API <span class="text-orange-500 underline underline-offset-8 decoration-2">v2.1</span>
       </h1>
       <p class="text-gray-500 mt-2 text-[10px] font-mono tracking-widest uppercase opacity-60">
         Enterprise SP-API Synchronization Core
@@ -11,11 +19,23 @@
     </div>
     
     <div class="flex align-items-center gap-4">
+      <p-button 
+        label="Sync Now" 
+        icon="pi pi-refresh" 
+        [loading]="isRequesting" 
+        [disabled]="status.isSyncing"
+        styleClass="p-button-outlined p-button-warning text-[10px] font-bold uppercase tracking-widest px-4 py-2 border-round-lg shadow-4 bg-gray-950/30"
+        (onClick)="onSyncNow()">
+      </p-button>
+
       <div class="flex align-items-center gap-4 p-2 border-round-lg shadow-4 bg-gray-950 border-gray-800 border-1">
         <div class="flex flex-column align-items-end">
           <span class="text-[9px] uppercase tracking-widest font-mono text-gray-600">Real-Time Core Status</span>
-          <span class="text-green-500 font-mono text-sm flex align-items-center gap-2">
-            <span class="h-2 w-2 bg-green-500 border-round-full animate-pulse shadow-4" style="box-shadow: 0 0 10px #10b981"></span> OPERATIONAL
+          <span class="font-mono text-sm flex align-items-center gap-2" [ngClass]="status.isSyncing ? 'text-orange-500' : 'text-green-500'">
+            <span class="h-2 w-2 border-round-full shadow-4" 
+                  [ngClass]="status.isSyncing ? 'bg-orange-500 animate-spin' : 'bg-green-500 animate-pulse'"
+                  [style.box-shadow]="status.isSyncing ? '0 0 10px #f97316' : '0 0 10px #10b981'"></span> 
+            {{ status.isSyncing ? 'SYNCING DATA...' : 'OPERATIONAL' }}
           </span>
         </div>
       </div>
@@ -23,6 +43,11 @@
   </div>
 
   <div class="dashboard-body p-4 md:p-8">
+    <!-- Error Message Panel -->
+    <div class="mb-4" *ngIf="status.lastError">
+      <p-message severity="error" [text]="'Last Sync Error: ' + status.lastError" styleClass="w-full"></p-message>
+    </div>
+
     <!-- 1. System Health Cards -->
     <div class="grid mb-8">
       @for (card of healthMetrics; track card.label) {
@@ -44,9 +69,12 @@
       <!-- 2. Pipeline State Machine -->
       <div class="col-12 lg:col-4">
         <div class="dashboard-card dark-card h-full">
-          <h2 class="accent-heading mb-8 flex align-items-center gap-2">
-            <i class="pi pi-sync text-orange-500"></i> Data Pipeline Status
-          </h2>
+          <div class="flex justify-content-between align-items-center mb-8">
+            <h2 class="accent-heading m-0 flex align-items-center gap-2">
+              <i class="pi pi-sync text-orange-500" [class.animate-spin]="status.isSyncing"></i> Data Pipeline Status
+            </h2>
+            <p-progressSpinner *ngIf="status.isSyncing" styleClass="w-2rem h-2rem" strokeWidth="8" fill="transparent" animationDuration=".5s"></p-progressSpinner>
+          </div>
           
           <p-timeline [value]="pipelineSteps" styleClass="customized-timeline">
             <ng-template pTemplate="marker" let-step>
@@ -71,6 +99,7 @@
           </p-timeline>
         </div>
       </div>
+
 
       <!-- 3. Data Tally & Rate Limiter -->
       <div class="col-12 lg:col-8">

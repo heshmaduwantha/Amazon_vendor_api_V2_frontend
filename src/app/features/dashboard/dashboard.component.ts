@@ -1,27 +1,67 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Subscription } from 'rxjs';
+import { Subscription, Observable } from 'rxjs';
 import { CardModule } from 'primeng/card';
 import { ChartModule } from 'primeng/chart';
 import { TimelineModule } from 'primeng/timeline';
-import { DashboardService, SystemHealth, PipelineStep } from '../../data/services/dashboard.service';
+import { ProgressSpinnerModule } from 'primeng/progressspinner';
+import { MessageModule } from 'primeng/message';
+import { ButtonModule } from 'primeng/button';
+import { ToastModule } from 'primeng/toast';
+import { MessageService } from 'primeng/api';
+import { DashboardService, SystemHealth, PipelineStep, SyncStatus } from '../../data/services/dashboard.service';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, CardModule, ChartModule, TimelineModule],
+  imports: [CommonModule, CardModule, ChartModule, TimelineModule, ProgressSpinnerModule, MessageModule, ButtonModule, ToastModule],
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.scss']
 })
 export class DashboardComponent implements OnInit, OnDestroy {
   healthMetrics: SystemHealth[] = [];
   pipelineSteps: PipelineStep[] = [];
+  syncStatus$: Observable<SyncStatus>;
+  isRequesting: boolean = false;
   chartData: any;
   chartOptions: any;
   
   private subscriptions = new Subscription();
 
-  constructor(private dashboardService: DashboardService) {}
+  constructor(
+    private dashboardService: DashboardService,
+    private messageService: MessageService
+  ) {
+    this.syncStatus$ = this.dashboardService.getSyncStatus();
+  }
+
+  onSyncNow() {
+    this.isRequesting = true;
+    
+    // Default to yesterday's date range
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const dateStr = yesterday.toISOString().split('T')[0];
+
+    this.dashboardService.triggerManualSync(dateStr, dateStr).subscribe({
+      next: () => {
+        this.messageService.add({ 
+          severity: 'success', 
+          summary: 'Sync Started', 
+          detail: 'Manual synchronization has been triggered successfully.' 
+        });
+        this.isRequesting = false;
+      },
+      error: (err) => {
+        this.messageService.add({ 
+          severity: 'error', 
+          summary: 'Sync Failed', 
+          detail: err.error?.message || 'Could not initiate synchronization.' 
+        });
+        this.isRequesting = false;
+      }
+    });
+  }
 
   ngOnInit() {
     this.subscriptions.add(
