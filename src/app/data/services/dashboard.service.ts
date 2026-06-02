@@ -1,0 +1,315 @@
+import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { BehaviorSubject, Observable, timer, of, combineLatest } from 'rxjs';
+import { switchMap, catchError, tap } from 'rxjs/operators';
+import { environment } from '../../../environments/environment';
+
+// ─── Phase 3: Data Tally Types ────────────────────────────────────────────────
+
+export interface SalesTotals {
+  orderedUnits:    number;
+  orderedRevenue:  number;
+  shippedUnits:    number;
+  shippedRevenue:  number;
+  shippedCogs:     number;
+  customerReturns: number;
+  currency:        string;
+}
+
+export interface SalesSummaryResult {
+  period:          { startDate: string; endDate: string };
+  dailyAggregates: any[];
+  totals:          SalesTotals;
+  rowCount:        number;
+}
+
+export interface InventorySnapshotSummary {
+  totalAsins:           number;
+  totalSellableUnits:   number;
+  totalUnsellableUnits: number;
+  avgOosRatePct:        number;
+  totalOpenPoUnits:     number;
+}
+
+export interface ForecastSnapshotResult {
+  startDate:              string;
+  endDate:                string;
+  totalAsins:             number;
+  totalMeanForecastUnits: number;
+  totalP70Units:          number;
+  totalP80Units:          number;
+  totalP90Units:          number;
+  rows:                   any[];
+}
+
+export interface InventorySnapshotResult {
+  period:    { startDate: string; endDate: string };
+  records:   any[];
+  summary:   InventorySnapshotSummary;
+  rowCount:  number;
+}
+
+// ─── Sync Stage ───────────────────────────────────────────────────────────────
+
+export enum SyncStage {
+  IDLE               = 'IDLE',
+  REQUESTING_REPORT  = 'REQUESTING_REPORT',
+  REPORT_IN_QUEUE    = 'REPORT_IN_QUEUE',
+  REPORT_IN_PROGRESS = 'REPORT_IN_PROGRESS',
+  FETCHING_DOCUMENT  = 'FETCHING_DOCUMENT',
+  DOWNLOADING_REPORT = 'DOWNLOADING_REPORT',
+  PARSING_REPORT     = 'PARSING_REPORT',
+  UPSERTING_DATABASE = 'UPSERTING_DATABASE',
+  COMPLETED          = 'COMPLETED',
+  FAILED             = 'FAILED',
+}
+
+// ─── Sync Status ──────────────────────────────────────────────────────────────
+
+export interface ReportSyncStatus {
+  reportType: 'sales' | 'inventory' | 'forecast';
+  isSyncing: boolean;
+  currentStage: SyncStage;
+  lastSyncStartedAt:  string | null;
+  lastSyncFinishedAt: string | null;
+  lastSyncStatus: 'SUCCESS' | 'FAILED' | 'IN_PROGRESS' | 'IDLE';
+  lastError: string | null;
+  stageTimestamps: Record<string, string>;
+  lastSyncPeriod: { startDate: string; endDate: string } | null;
+  nextScheduledAt: string;
+}
+
+export interface CombinedSyncStatus {
+  sales:     ReportSyncStatus;
+  inventory: ReportSyncStatus;
+  forecast:  ReportSyncStatus;
+}
+
+// ─── Pipeline Step ────────────────────────────────────────────────────────────
+
+export interface PipelineStep {
+  label: string;
+  desc:  string;
+  time:  string;
+  state: 'complete' | 'active' | 'pending';
+}
+
+// ─── Phase 2: Quota / Health ──────────────────────────────────────────────────
+
+export interface QuotaGroup {
+  group:              string;
+  status:             'OK' | 'COOLDOWN' | 'UNKNOWN';
+  consecutive429s:    number;
+  lastSuccess:        string | null;
+  last429:            string | null;
+  cooldownUntil:      string | null;
+  nextAllowedAt:      string | null;
+  rateLimitHeader:    string | null;
+  calculatedMinDelay: string | null;
+}
+
+export interface SystemHealth {
+  timestamp:   string;
+  apiHealth: {
+    status:         'OK' | 'COOLDOWN';
+    total429Errors: number;
+    message:        string;
+  };
+  rateLimiters: {
+    createReport:      string;
+    getReport:         string;
+    getReportDocument: string;
+    concurrency:       string;
+  };
+  quotaGroups: QuotaGroup[];
+}
+
+// ─── Pipeline Definitions ─────────────────────────────────────────────────────
+
+const PIPELINE_DEFS: { stage: SyncStage; label: string; desc: string }[] = [
+  { stage: SyncStage.REQUESTING_REPORT,  label: 'REQUEST',  desc: 'Amazon createReport call'  },
+  { stage: SyncStage.REPORT_IN_QUEUE,    label: 'QUEUE',    desc: 'Waiting in SP-API queue'    },
+  { stage: SyncStage.REPORT_IN_PROGRESS, label: 'PROGRESS', desc: 'Amazon generating data'     },
+  { stage: SyncStage.FETCHING_DOCUMENT,  label: 'METADATA', desc: 'Fetching document info'     },
+  { stage: SyncStage.DOWNLOADING_REPORT, label: 'DOWNLOAD', desc: 'Streaming from S3'          },
+  { stage: SyncStage.PARSING_REPORT,     label: 'PARSE',    desc: 'Gunzip & JSON parse'        },
+  { stage: SyncStage.UPSERTING_DATABASE, label: 'UPSERT',   desc: 'Bulk database write'        },
+  { stage: SyncStage.COMPLETED,          label: 'DONE',     desc: 'Sync cycle finished'        },
+];
+
+const defaultStatus = (reportType: 'sales' | 'inventory' | 'forecast'): ReportSyncStatus => ({
+  reportType, isSyncing: false,
+  currentStage: SyncStage.IDLE,
+  lastSyncStartedAt: null, lastSyncFinishedAt: null,
+  lastSyncStatus: 'IDLE', lastError: null,
+  stageTimestamps: {}, lastSyncPeriod: null, nextScheduledAt: '',
+});
+
+// ─── Service ──────────────────────────────────────────────────────────────────
+
+@Injectable({ providedIn: 'root' })
+export class DashboardService {
+
+  private combinedSubject = new BehaviorSubject<CombinedSyncStatus>({
+    sales:     defaultStatus('sales'),
+    inventory: defaultStatus('inventory'),
+    forecast:  defaultStatus('forecast'),
+  });
+
+  private healthSubject = new BehaviorSubject<SystemHealth | null>(null);
+
+  constructor(private http: HttpClient) {
+    this.startStatusPolling();   // every 5s — sync status
+    this.startHealthPolling();   // every 15s — quota health (less frequent)
+  }
+
+  // ── Polling ───────────────────────────────────────────────────────────────
+
+  private startStatusPolling(): void {
+    timer(0, 5000).pipe(
+      switchMap(() =>
+        this.http.get<CombinedSyncStatus>(`${environment.apiUrl}/sync/status`).pipe(
+          catchError(err => { console.error('[Status poll]', err); return of(null); }),
+        ),
+      ),
+      tap(s => { if (s) this.combinedSubject.next(s); }),
+    ).subscribe();
+  }
+
+  private startHealthPolling(): void {
+    timer(500, 15000).pipe(
+      switchMap(() =>
+        this.http.get<SystemHealth>(`${environment.apiUrl}/sync/health`).pipe(
+          catchError(err => { console.error('[Health poll]', err); return of(null); }),
+        ),
+      ),
+      tap(h => { if (h) this.healthSubject.next(h); }),
+    ).subscribe();
+  }
+
+  // ── Observables ───────────────────────────────────────────────────────────
+
+  getCombinedStatus(): Observable<CombinedSyncStatus> { return this.combinedSubject.asObservable(); }
+  getSystemHealth():   Observable<SystemHealth | null>  { return this.healthSubject.asObservable(); }
+
+  // ── Manual Triggers ───────────────────────────────────────────────────────
+
+  triggerSalesSync(startDate: string, endDate: string): Observable<any> {
+    return this.http.post(`${environment.apiUrl}/sync/manual/sales`, { startDate, endDate });
+  }
+
+  triggerInventorySync(startDate: string, endDate: string): Observable<any> {
+    return this.http.post(`${environment.apiUrl}/sync/manual/inventory`, { startDate, endDate });
+  }
+
+  triggerForecastSync(startDate: string, endDate: string): Observable<any> {
+    return this.http.post(`${environment.apiUrl}/sync/manual/forecast`, { startDate, endDate });
+  }
+
+  // ── Phase 3: Data Tally ───────────────────────────────────────────────────
+
+  /**
+   * GET /reports/sales/summary?startDate=...&endDate=...
+   * Returns aggregate totals for the period — use to verify against portal.
+   */
+  getSalesSummary(startDate: string, endDate: string): Observable<SalesSummaryResult> {
+    return this.http.get<SalesSummaryResult>(
+      `${environment.apiUrl}/reports/sales/summary`,
+      { params: { startDate, endDate } },
+    );
+  }
+
+  /**
+   * GET /reports/inventory/snapshot?startDate=...&endDate=...
+   * Returns per-ASIN inventory data + summary for the period.
+   */
+  getInventorySnapshot(startDate: string, endDate: string): Observable<InventorySnapshotResult> {
+    return this.http.get<InventorySnapshotResult>(
+      `${environment.apiUrl}/reports/inventory/snapshot`,
+      { params: { startDate, endDate } },
+    );
+  }
+
+  getForecastSnapshot(startDate: string, endDate: string): Observable<ForecastSnapshotResult> {
+    return this.http.get<ForecastSnapshotResult>(
+      `${environment.apiUrl}/reports/forecast/snapshot`,
+      { params: { startDate, endDate } },
+    );
+  }
+
+  getSalesByAsin(startDate: string, endDate: string): Observable<any[]> {
+    return this.http.get<any[]>(
+      `${environment.apiUrl}/reports/sales/by-asin`,
+      { params: { startDate, endDate } },
+    );
+  }
+
+  getInventoryByAsin(startDate: string, endDate: string): Observable<any[]> {
+    return this.http.get<any[]>(
+      `${environment.apiUrl}/reports/inventory/by-asin`,
+      { params: { startDate, endDate } },
+    );
+  }
+
+  /**
+   * Mirrors the backend getLastCompletedWeek(lagDays=3) algorithm:
+   * last Mon→Sun week where Sunday is at least 3 days ago.
+   */
+  getLastCompletedWeekDates(lagDays = 3): { startDate: string; endDate: string } {
+    const now     = new Date();
+    const cutoff  = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - lagDays));
+    const dow     = cutoff.getUTCDay();
+    const weekEnd = new Date(cutoff);
+    if (dow !== 0) weekEnd.setUTCDate(cutoff.getUTCDate() - dow);
+    const weekStart = new Date(weekEnd);
+    weekStart.setUTCDate(weekEnd.getUTCDate() - 6);
+    return {
+      startDate: weekStart.toISOString().split('T')[0],
+      endDate:   weekEnd.toISOString().split('T')[0],
+    };
+  }
+
+  // ── Pipeline Builder ──────────────────────────────────────────────────────
+
+  buildPipeline(status: ReportSyncStatus): PipelineStep[] {
+    const stageList = PIPELINE_DEFS.map(d => d.stage);
+    const currentIdx = stageList.indexOf(status.currentStage);
+
+    return PIPELINE_DEFS.map(({ stage, label, desc }) => {
+      const idx = stageList.indexOf(stage);
+      const ts  = status.stageTimestamps?.[stage];
+      const time = ts
+        ? new Date(ts).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })
+        : '--:--:--';
+
+      let state: 'complete' | 'active' | 'pending';
+      if      (status.lastSyncStatus === 'SUCCESS') state = 'complete';
+      else if (status.currentStage === stage)        state = 'active';
+      else if (currentIdx === -1 || idx > currentIdx) state = 'pending';
+      else                                            state = 'complete';
+
+      return { label, desc, time, state };
+    });
+  }
+
+  // ── Formatters ────────────────────────────────────────────────────────────
+
+  formatNextRun(iso: string): string {
+    if (!iso) return 'Unknown';
+    const d = new Date(iso);
+    return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+      + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) + ' UTC';
+  }
+
+  formatLastRun(iso: string | null): string {
+    if (!iso) return 'Never';
+    const d = new Date(iso);
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+      + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+  }
+
+  formatTime(iso: string | null): string {
+    if (!iso) return '—';
+    return new Date(iso).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  }
+}

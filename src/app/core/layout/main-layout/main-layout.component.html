@@ -1,0 +1,24 @@
+<div class="layout-wrapper flex h-screen overflow-hidden bg-black">
+  
+  <!-- Sidebar (Fixed Left) -->
+  <div class="layout-sidebar border-right-1 dark-sidebar border-gray-900" 
+       [style.width.px]="sidebarVisible ? 220 : 0"
+       style="transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); overflow: hidden;">
+    
+    <div class="brand-section flex align-items-center justify-content-center border-gray-900">
+      <i class="pi pi-amazon text-2xl text-white"></i>
+    </div>
+
+    <div class="py-3 px-2">
+      <p-menu [model]="sidebarItems" [style]="{'width': '100%', 'border': 'none', 'background': 'transparent'}"></p-menu>
+    </div>
+  </div>
+
+  <!-- Main Content Area -->
+  <div class="layout-main flex-1 flex flex-column min-w-0 bg-black">
+    <div class="layout-content flex-1 overflow-y-auto p-0">
+      <router-outlet></router-outlet>
+    </div>
+  </div>
+
+</div>

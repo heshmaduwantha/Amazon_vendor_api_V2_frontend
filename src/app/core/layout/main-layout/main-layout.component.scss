@@ -1,0 +1,27 @@
+::ng-deep .layout-sidebar {
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  height: 100vh;
+  background-color: #000 !important;
+
+  .brand-section {
+    height: 90px;
+    border-bottom: 1px solid #1e293b;
+    padding: 0 1rem;
+    white-space: nowrap;
+  }
+
+  .p-menuitem-link {
+    color: #94a3b8;
+    &:hover {
+      background-color: rgba(249, 115, 22, 0.1);
+      color: #f97316;
+      .p-menuitem-icon { color: #f97316; }
+    }
+    .p-menuitem-icon { color: #94a3b8; }
+  }
+}
+
+.layout-main, .layout-content {
+  height: 100vh;
+  background-color: #000 !important;
+}

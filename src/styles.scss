@@ -1,0 +1,44 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&family=Inter:wght@400;700;900&display=swap');
+
+:root {
+    --primary-orange: #f97316;
+    --slate-900: #0f172a;
+    --black: #000000;
+}
+
+html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    background-color: var(--black) !important;
+    color: #e2e8f0;
+    font-family: 'Inter', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+}
+
+/* Remove any PrimeNG theme background leakages */
+.p-component-overlay {
+    background-color: rgba(0, 0, 0, 0.7) !important;
+}
+
+.font-mono {
+    font-family: 'Roboto Mono', monospace !important;
+}
+
+.text-orange-500 {
+    color: var(--primary-orange) !important;
+}
+
+.tracking-widest {
+    letter-spacing: 0.3em !important;
+}
+
+/* High Fidelity Glows */
+.glow-orange {
+    box-shadow: 0 0 20px rgba(249, 115, 22, 0.15) !important;
+}
+
+.glow-blue {
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.15) !important;
+}
