@@ -1,30 +1,72 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
+/* ──────────────────────────────────────────────────────────────────────────
+   Horizon Group USA — Amazon API Performance Dashboard
+   Theme = DARK SIDEBAR + LIGHT CONTENT.
+   All colors live here as CSS variables; components reference the tokens,
+   never raw hex.
+   ────────────────────────────────────────────────────────────────────────── */
 :root {
-  --primary:        #f97316;
-  --primary-light:  #fff7ed;
-  --primary-dark:   #ea580c;
-  --sidebar-bg:     #1e293b;
-  --sidebar-text:   #94a3b8;
-  --sidebar-active: #fb923c;
-  --bg:             #f1f5f9;
-  --surface:        #ffffff;
-  --border:         #e2e8f0;
-  --text-primary:   #1e293b;
-  --text-secondary: #64748b;
-  --text-muted:     #94a3b8;
-  --green:          #16a34a;
-  --green-bg:       #dcfce7;
-  --red:            #dc2626;
-  --red-bg:         #fee2e2;
-  --blue:           #2563eb;
-  --blue-bg:        #dbeafe;
-  --yellow:         #d97706;
-  --yellow-bg:      #fef3c7;
-  --shadow-sm:      0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
-  --shadow-md:      0 4px 12px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.04);
-  --radius:         12px;
-  --radius-sm:      8px;
+  /* Horizon brand (sidebar stays dark) */
+  --navy-900:       #04212f;
+  --navy-800:       #062a3e;
+  --navy-700:       #072f49;   /* sidebar / logo band navy */
+  --navy-600:       #0a3a57;
+  --cyan:           #00bbdf;   /* brand accent (buttons, active nav, icons) */
+  --cyan-bright:    #3dd6f2;
+  --cyan-ink:       #0a7d96;   /* darkened cyan for text/links on light bg */
+  --teal-dark:      #0b819b;
+
+  /* LIGHT dashboard surface */
+  --bg:             #ffffff;   /* dashboard space — white */
+  --panel:          #f2f6f9;   /* component cards — soft off-white grey */
+  --panel-2:        #ffffff;   /* nested boxes — white, sits inside cards */
+  --border:         #e1e9ef;   /* soft grey border */
+  --border-soft:    #edf1f5;
+  --grid:           #e8edf1;   /* chart gridlines */
+
+  /* Ink */
+  --text:           #16323f;   /* soft dark navy text (not harsh black) */
+  --text-primary:   #16323f;
+  --text-dim:       #4d6878;
+  --text-secondary: #4d6878;
+  --muted:          #8298a5;
+  --text-muted:     #8298a5;
+
+  /* Semantic status — kept meaningful, NOT recolored to brand */
+  --green:          #15a06f;
+  --green-soft:     #eaf8f1;
+  --green-line:     #2bbd86;
+  --green-bg:       #eaf8f1;
+  --amber:          #c98400;
+  --amber-bg:       #fbf6ec;
+  --red:            #df5350;
+  --red-bg:         #fdeeed;
+  --blue:           #0a7d96;
+  --blue-bg:        rgba(0,187,223,.10);
+  --yellow:         #c98400;
+  --yellow-bg:      #fbf6ec;
+
+  /* Brand primary (buttons / active states) */
+  --primary:        #00bbdf;
+  --primary-light:  rgba(0,187,223,.10);
+  --primary-dark:   #0b819b;
+
+  /* Surfaces / chrome */
+  --surface:        #f2f6f9;
+  --sidebar-bg:     #072f49;
+  --sidebar-text:   #a9c6d4;
+  --sidebar-active: #00bbdf;
+
+  --r:              16px;
+  --radius:         16px;
+  --r-sm:           10px;
+  --radius-sm:      10px;
+  --shadow:         0 10px 28px -16px rgba(20,50,70,.28);
+  --shadow-sm:      0 1px 2px rgba(20,50,70,.05), 0 8px 24px -18px rgba(20,50,70,.35);
+  --shadow-card:    0 1px 2px rgba(20,50,70,.05), 0 8px 24px -18px rgba(20,50,70,.35);
+  --shadow-md:      0 10px 28px -16px rgba(20,50,70,.28);
+  --focus:          0 0 0 3px rgba(0,187,223,.25);
 }
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -33,17 +75,20 @@ html, body {
   height: 100%;
   margin: 0;
   padding: 0;
-  background-color: var(--bg);
-  color: var(--text-primary);
-  font-family: 'Inter', system-ui, sans-serif;
+  background:
+    radial-gradient(1100px 520px at 82% -12%, rgba(0,187,223,.06), transparent 60%),
+    radial-gradient(900px 600px at -6% 112%, rgba(11,129,155,.05), transparent 55%),
+    var(--bg);
+  color: var(--text);
+  font-family: 'IBM Plex Sans', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
   font-size: 14px;
 }
 
 /* PrimeNG overrides */
-.p-component { font-family: 'Inter', system-ui, sans-serif !important; }
-.p-component-overlay { background-color: rgba(0,0,0,0.4) !important; }
+.p-component { font-family: 'IBM Plex Sans', system-ui, sans-serif !important; }
+.p-component-overlay { background-color: rgba(7,47,73,0.35) !important; }
 
 .p-tag { font-size: 11px !important; font-weight: 600 !important; border-radius: 6px !important; }
 .p-tag.p-tag-success  { background: var(--green-bg)  !important; color: var(--green)  !important; }
@@ -53,7 +98,7 @@ html, body {
 
 .p-button.p-button-outlined.p-button-warning {
   border-color: var(--primary) !important;
-  color: var(--primary) !important;
+  color: var(--primary-dark) !important;
   &:hover { background: var(--primary-light) !important; }
 }
 .p-button.p-button-outlined.p-button-info {
@@ -63,16 +108,26 @@ html, body {
 }
 
 input[type="date"] {
-  font-family: 'Inter', sans-serif !important;
-  font-size: 13px !important;
+  font-family: 'JetBrains Mono', 'IBM Plex Sans', sans-serif !important;
+  font-size: 12.5px !important;
   color-scheme: light !important;
 }
 
 .p-message.p-message-error {
   background: var(--red-bg) !important;
-  border-color: #fca5a5 !important;
+  border-color: #f4b6b5 !important;
   color: var(--red) !important;
   border-radius: var(--radius-sm) !important;
 }
 
 .p-chart canvas { border-radius: var(--radius-sm); }
+
+/* Respect users who prefer reduced motion — kill all decorative animation. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
