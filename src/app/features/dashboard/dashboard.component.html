@@ -3,567 +3,360 @@
 <ng-container *ngIf="combined$ | async as combined">
 <ng-container *ngIf="health$ | async as health">
 
-<!-- Top progress bar -->
+<!-- Sync progress bar -->
 <div *ngIf="combined.sales.isSyncing || combined.inventory.isSyncing"
-     class="fixed top-0 left-0 w-full h-1 z-50">
-  <div class="h-full bg-orange-500 animate-pulse" style="box-shadow:0 0 15px #f97316"></div>
-</div>
+     class="sync-progress-bar"></div>
 
-<div class="dashboard-container min-h-screen bg-black text-slate-200">
+<div class="dash">
 
-  <!-- ── Header ──────────────────────────────────────────────────────── -->
-  <div class="dashboard-header flex justify-content-between align-items-center border-gray-900">
+  <!-- ── Today bar ────────────────────────────────────────────────────── -->
+  <div class="today-bar">
+    <span class="today-label">
+      📅 Today: <strong>{{ todayStr | date:'EEEE, MMMM d, y' }}</strong>
+    </span>
+    <span class="today-note">Future dates are blocked · Amazon SP-API official reference data only</span>
+  </div>
+
+  <!-- ── Header ───────────────────────────────────────────────────────── -->
+  <div class="dash-header">
     <div>
-      <h1 class="text-3xl font-bold uppercase tracking-widest m-0 text-white">
-        VENDOR API <span class="text-orange-500 underline underline-offset-8 decoration-2">v3.0</span>
-      </h1>
-      <p class="text-gray-500 mt-2 text-[10px] font-mono tracking-widest uppercase opacity-60">
-        Phase 1+2+3 · Sales: Wednesday · Inventory: Sunday · 429 Guard · Data Tally
-      </p>
+      <h1 class="dash-title">Analytics Dashboard</h1>
+      <p class="dash-sub">Amazon Vendor Central · US Marketplace</p>
     </div>
-
-    <!-- API Health badge -->
-    <div class="flex align-items-center gap-3">
-      <div class="flex align-items-center gap-2 px-3 py-2 border-round-lg border-1"
-           [ngClass]="health.apiHealth.status === 'OK'
-             ? 'bg-green-950/40 border-green-800'
-             : 'bg-red-950/40 border-red-800'">
-        <span class="h-2 w-2 border-round-full animate-pulse"
-              [ngClass]="health.apiHealth.status === 'OK' ? 'bg-green-500' : 'bg-red-500'"
-              [style.box-shadow]="health.apiHealth.status === 'OK' ? '0 0 8px #10b981' : '0 0 8px #ef4444'">
-        </span>
-        <span class="font-mono text-xs font-bold"
-              [ngClass]="health.apiHealth.status === 'OK' ? 'text-green-400' : 'text-red-400'">
-          API {{ health.apiHealth.status }}
-          <span *ngIf="health.apiHealth.total429Errors > 0" class="text-yellow-500 ml-1">
-            · {{ health.apiHealth.total429Errors }}x 429
-          </span>
+    <div class="dash-header-right">
+      <div class="api-badge"
+           [class.badge-ok]="health.apiHealth.status === 'OK'"
+           [class.badge-err]="health.apiHealth.status !== 'OK'">
+        <span class="status-dot"
+              [class.dot-green]="health.apiHealth.status === 'OK'"
+              [class.dot-red]="health.apiHealth.status !== 'OK'"></span>
+        <span>SP-API {{ health.apiHealth.status }}</span>
+        <span *ngIf="health.apiHealth.total429Errors > 0" class="badge-429">
+          {{ health.apiHealth.total429Errors }}× 429
         </span>
       </div>
-
-      <div class="flex align-items-center gap-2 px-3 py-2 border-round-lg border-1 bg-gray-950 border-gray-800">
-        <span class="h-2 w-2 border-round-full"
-              [ngClass]="combined.sales.isSyncing || combined.inventory.isSyncing
-                ? 'bg-orange-500 animate-spin' : 'bg-green-500 animate-pulse'"
-              [style.box-shadow]="combined.sales.isSyncing || combined.inventory.isSyncing
-                ? '0 0 10px #f97316' : '0 0 10px #10b981'"></span>
-        <span class="font-mono text-sm font-bold"
-              [ngClass]="combined.sales.isSyncing || combined.inventory.isSyncing
-                ? 'text-orange-400' : 'text-green-400'">
-          {{ combined.sales.isSyncing || combined.inventory.isSyncing ? 'SYNCING' : 'OPERATIONAL' }}
-        </span>
+      <div class="sync-badge"
+           [class.badge-syncing]="combined.sales.isSyncing || combined.inventory.isSyncing">
+        <span class="status-dot"
+              [class.dot-orange]="combined.sales.isSyncing || combined.inventory.isSyncing"
+              [class.dot-green]="!(combined.sales.isSyncing || combined.inventory.isSyncing)"></span>
+        {{ combined.sales.isSyncing || combined.inventory.isSyncing ? 'SYNCING' : 'OPERATIONAL' }}
       </div>
     </div>
   </div>
 
-  <div class="dashboard-body p-4 md:p-6">
+  <div class="dash-body">
 
-    <!-- ── Row 1: Sales + Inventory Panels ─────────────────────────── -->
-    <div class="grid mb-5">
-
-      <!-- SALES PANEL -->
-      <div class="col-12 lg:col-6">
-        <div class="dashboard-card dark-card h-full">
-
-          <div class="flex justify-content-between align-items-center mb-4">
-            <div>
-              <div class="flex align-items-center gap-3 mb-1">
-                <i class="pi pi-chart-line text-orange-400" style="font-size:1rem"></i>
-                <h2 class="m-0 text-white font-bold uppercase tracking-widest" style="font-size:.95rem">Sales Report</h2>
-                <p-tag [severity]="statusSeverity(combined.sales)"
-                       [value]="statusLabel(combined.sales)"
-                       styleClass="text-[9px] font-mono font-bold tracking-widest"></p-tag>
-              </div>
-              <p class="text-[9px] font-mono text-gray-600 m-0 uppercase tracking-widest">
-                Cron: Every Wednesday 02:00 UTC · GET_VENDOR_SALES_REPORT
-              </p>
-            </div>
-            <p-progressSpinner *ngIf="combined.sales.isSyncing"
-                               styleClass="w-2rem h-2rem" strokeWidth="8" fill="transparent" animationDuration=".5s">
-            </p-progressSpinner>
-          </div>
-
-          <!-- Stats -->
-          <div class="grid mb-4 text-center">
-            <div class="col-4 border-right-1 border-gray-800">
-              <p class="text-[9px] uppercase tracking-widest font-mono text-gray-600 m-0">Last Sync</p>
-              <p class="text-white font-mono text-xs font-bold m-0 mt-1">{{ formatLastRun(combined.sales.lastSyncFinishedAt) }}</p>
-            </div>
-            <div class="col-4 border-right-1 border-gray-800">
-              <p class="text-[9px] uppercase tracking-widest font-mono text-gray-600 m-0">Next Run</p>
-              <p class="text-orange-400 font-mono text-xs font-bold m-0 mt-1">{{ formatNextRun(combined.sales.nextScheduledAt) }}</p>
-            </div>
-            <div class="col-4">
-              <p class="text-[9px] uppercase tracking-widest font-mono text-gray-600 m-0">Stage</p>
-              <p class="font-mono text-xs font-bold m-0 mt-1"
-                 [ngClass]="combined.sales.isSyncing ? 'text-orange-400' : 'text-gray-500'">
-                {{ combined.sales.currentStage }}
-              </p>
-            </div>
-          </div>
-
-          <!-- Period -->
-          <div class="mb-3 px-2 py-1 border-round bg-gray-900/50" *ngIf="combined.sales.lastSyncPeriod">
-            <span class="text-[9px] font-mono text-gray-600 uppercase tracking-widest">Period: </span>
-            <span class="text-[9px] font-mono text-gray-300">
-              {{ combined.sales.lastSyncPeriod.startDate | slice:0:10 }} → {{ combined.sales.lastSyncPeriod.endDate | slice:0:10 }}
-            </span>
-          </div>
-
-          <p-message *ngIf="combined.sales.lastError" severity="error"
-                     [text]="combined.sales.lastError" styleClass="w-full mb-3 text-xs"></p-message>
-
-          <!-- Pipeline -->
-          <p-timeline [value]="salesPipeline" styleClass="customized-timeline">
-            <ng-template pTemplate="marker" let-step>
-              <span class="flex align-items-center justify-content-center border-round-full border-1"
-                [ngClass]="{
-                  'bg-green-500 border-green-500':   step.state==='complete',
-                  'bg-transparent border-orange-500': step.state==='active' && combined.sales.lastSyncStatus!=='FAILED',
-                  'bg-transparent border-red-500':    step.state==='active' && combined.sales.lastSyncStatus==='FAILED',
-                  'bg-transparent border-gray-800':   step.state==='pending'
-                }" style="width:20px;height:20px;">
-                <i class="pi text-xs"
-                   [ngClass]="{
-                     'pi-check text-white':          step.state==='complete',
-                     'pi-bolt text-orange-500':      step.state==='active' && combined.sales.lastSyncStatus!=='FAILED',
-                     'pi-times text-red-500':        step.state==='active' && combined.sales.lastSyncStatus==='FAILED',
-                     'pi-circle-fill text-gray-800': step.state==='pending'
-                   }"></i>
-              </span>
-            </ng-template>
-            <ng-template pTemplate="content" let-step>
-              <div class="mb-1">
-                <span class="text-[10px] font-mono font-bold tracking-widest uppercase"
-                      [ngClass]="step.state==='pending' ? 'text-gray-700' : 'text-white'">{{ step.label }}</span>
-                <span class="text-[9px] text-gray-600 font-mono ml-2">{{ step.desc }}</span>
-                <span class="text-[9px] font-mono text-gray-700 block">{{ step.time }}</span>
-              </div>
-            </ng-template>
-          </p-timeline>
-
-          <div class="mt-4 pt-3 border-top-1 border-gray-800">
-            <div class="flex align-items-center gap-2 mb-2 flex-wrap">
-              <span class="text-[9px] font-mono text-gray-600 uppercase tracking-widest">Range:</span>
-              <input type="date" [(ngModel)]="syncStartDate"
-                     class="bg-gray-900 border-1 border-gray-700 border-round text-gray-200 text-xs font-mono px-2 py-1"
-                     style="color-scheme:dark" />
-              <span class="text-gray-600 font-mono text-xs">→</span>
-              <input type="date" [(ngModel)]="syncEndDate"
-                     class="bg-gray-900 border-1 border-gray-700 border-round text-gray-200 text-xs font-mono px-2 py-1"
-                     style="color-scheme:dark" />
-            </div>
-            <p-button label="Sync Sales Now" icon="pi pi-refresh"
-              [loading]="isSalesRequesting" [disabled]="combined.sales.isSyncing || !syncStartDate || !syncEndDate"
-              styleClass="w-full p-button-outlined p-button-warning text-[9px] font-bold uppercase tracking-widest"
-              (onClick)="onSyncSalesNow()"></p-button>
-          </div>
-        </div>
+    <!-- ── KPI Strip ─────────────────────────────────────────────────── -->
+    <div class="kpi-strip" *ngIf="salesTally">
+      <div class="kpi-card kpi-revenue">
+        <div class="kpi-lbl">Shipped Revenue</div>
+        <div class="kpi-val">{{ formatCurrency(salesTally.totals.shippedRevenue, salesTally.totals.currency) }}</div>
+        <div class="kpi-period">{{ salesTally.period.startDate | slice:0:10 }} → {{ salesTally.period.endDate | slice:0:10 }}</div>
       </div>
-
-      <!-- INVENTORY PANEL -->
-      <div class="col-12 lg:col-6">
-        <div class="dashboard-card dark-card h-full">
-
-          <div class="flex justify-content-between align-items-center mb-4">
-            <div>
-              <div class="flex align-items-center gap-3 mb-1">
-                <i class="pi pi-box text-blue-400" style="font-size:1rem"></i>
-                <h2 class="m-0 text-white font-bold uppercase tracking-widest" style="font-size:.95rem">Inventory Report</h2>
-                <p-tag [severity]="statusSeverity(combined.inventory)"
-                       [value]="statusLabel(combined.inventory)"
-                       styleClass="text-[9px] font-mono font-bold tracking-widest"></p-tag>
-              </div>
-              <p class="text-[9px] font-mono text-gray-600 m-0 uppercase tracking-widest">
-                Cron: Every Sunday 02:00 UTC · GET_VENDOR_INVENTORY_REPORT
-              </p>
-            </div>
-            <p-progressSpinner *ngIf="combined.inventory.isSyncing"
-                               styleClass="w-2rem h-2rem" strokeWidth="8" fill="transparent" animationDuration=".5s">
-            </p-progressSpinner>
-          </div>
-
-          <!-- Stats -->
-          <div class="grid mb-4 text-center">
-            <div class="col-4 border-right-1 border-gray-800">
-              <p class="text-[9px] uppercase tracking-widest font-mono text-gray-600 m-0">Last Sync</p>
-              <p class="text-white font-mono text-xs font-bold m-0 mt-1">{{ formatLastRun(combined.inventory.lastSyncFinishedAt) }}</p>
-            </div>
-            <div class="col-4 border-right-1 border-gray-800">
-              <p class="text-[9px] uppercase tracking-widest font-mono text-gray-600 m-0">Next Run</p>
-              <p class="text-blue-400 font-mono text-xs font-bold m-0 mt-1">{{ formatNextRun(combined.inventory.nextScheduledAt) }}</p>
-            </div>
-            <div class="col-4">
-              <p class="text-[9px] uppercase tracking-widest font-mono text-gray-600 m-0">Stage</p>
-              <p class="font-mono text-xs font-bold m-0 mt-1"
-                 [ngClass]="combined.inventory.isSyncing ? 'text-blue-400' : 'text-gray-500'">
-                {{ combined.inventory.currentStage }}
-              </p>
-            </div>
-          </div>
-
-          <!-- Period -->
-          <div class="mb-3 px-2 py-1 border-round bg-gray-900/50" *ngIf="combined.inventory.lastSyncPeriod">
-            <span class="text-[9px] font-mono text-gray-600 uppercase tracking-widest">Period: </span>
-            <span class="text-[9px] font-mono text-gray-300">
-              {{ combined.inventory.lastSyncPeriod.startDate | slice:0:10 }} → {{ combined.inventory.lastSyncPeriod.endDate | slice:0:10 }}
-            </span>
-          </div>
-
-          <p-message *ngIf="combined.inventory.lastError" severity="error"
-                     [text]="combined.inventory.lastError" styleClass="w-full mb-3 text-xs"></p-message>
-
-          <!-- Pipeline -->
-          <p-timeline [value]="inventoryPipeline" styleClass="customized-timeline">
-            <ng-template pTemplate="marker" let-step>
-              <span class="flex align-items-center justify-content-center border-round-full border-1"
-                [ngClass]="{
-                  'bg-green-500 border-green-500':  step.state==='complete',
-                  'bg-transparent border-blue-500': step.state==='active' && combined.inventory.lastSyncStatus!=='FAILED',
-                  'bg-transparent border-red-500':  step.state==='active' && combined.inventory.lastSyncStatus==='FAILED',
-                  'bg-transparent border-gray-800': step.state==='pending'
-                }" style="width:20px;height:20px;">
-                <i class="pi text-xs"
-                   [ngClass]="{
-                     'pi-check text-white':          step.state==='complete',
-                     'pi-bolt text-blue-500':        step.state==='active' && combined.inventory.lastSyncStatus!=='FAILED',
-                     'pi-times text-red-500':        step.state==='active' && combined.inventory.lastSyncStatus==='FAILED',
-                     'pi-circle-fill text-gray-800': step.state==='pending'
-                   }"></i>
-              </span>
-            </ng-template>
-            <ng-template pTemplate="content" let-step>
-              <div class="mb-1">
-                <span class="text-[10px] font-mono font-bold tracking-widest uppercase"
-                      [ngClass]="step.state==='pending' ? 'text-gray-700' : 'text-white'">{{ step.label }}</span>
-                <span class="text-[9px] text-gray-600 font-mono ml-2">{{ step.desc }}</span>
-                <span class="text-[9px] font-mono text-gray-700 block">{{ step.time }}</span>
-              </div>
-            </ng-template>
-          </p-timeline>
-
-          <div class="mt-4 pt-3 border-top-1 border-gray-800">
-            <div class="flex align-items-center gap-2 mb-2 flex-wrap">
-              <span class="text-[9px] font-mono text-gray-600 uppercase tracking-widest">Range:</span>
-              <input type="date" [(ngModel)]="syncStartDate"
-                     class="bg-gray-900 border-1 border-gray-700 border-round text-gray-200 text-xs font-mono px-2 py-1"
-                     style="color-scheme:dark" />
-              <span class="text-gray-600 font-mono text-xs">→</span>
-              <input type="date" [(ngModel)]="syncEndDate"
-                     class="bg-gray-900 border-1 border-gray-700 border-round text-gray-200 text-xs font-mono px-2 py-1"
-                     style="color-scheme:dark" />
-            </div>
-            <p-button label="Sync Inventory Now" icon="pi pi-refresh"
-              [loading]="isInventoryRequesting" [disabled]="combined.inventory.isSyncing || !syncStartDate || !syncEndDate"
-              styleClass="w-full p-button-outlined p-button-info text-[9px] font-bold uppercase tracking-widest"
-              (onClick)="onSyncInventoryNow()"></p-button>
-          </div>
+      <div class="kpi-card kpi-units">
+        <div class="kpi-lbl">Shipped Units</div>
+        <div class="kpi-val">{{ formatNumber(salesTally.totals.shippedUnits) }}</div>
+        <div class="kpi-period">{{ salesTally.rowCount }} week{{ salesTally.rowCount !== 1 ? 's' : '' }} of data</div>
+      </div>
+      <div class="kpi-card kpi-cogs">
+        <div class="kpi-lbl">Shipped COGS</div>
+        <div class="kpi-val">{{ formatCurrency(salesTally.totals.shippedCogs, salesTally.totals.currency) }}</div>
+        <div class="kpi-period kpi-margin">
+          Margin {{ grossMarginPct(salesTally.totals.shippedRevenue, salesTally.totals.shippedCogs) | number:'1.1-1' }}%
         </div>
       </div>
     </div>
 
-    <!-- ── Row 2: Phase 3 — Data Tally ─────────────────────────────── -->
-    <div class="grid mb-5">
-      <div class="col-12">
-        <div class="dashboard-card dark-card">
+    <!-- ── Tally Section ─────────────────────────────────────────────── -->
+    <div class="section-card">
+      <div class="section-head">
+        <div>
+          <div class="section-title">📊 Week-wise Tally · Compare with Amazon Vendor Central</div>
+          <div class="section-sub">Vendor Central → Analytics → Sales Dashboard → Same date range → Weekly</div>
+        </div>
+        <div class="tally-controls">
+          <input type="date" [(ngModel)]="tallyStartDate" [max]="todayStr" class="date-input" />
+          <span class="arrow">→</span>
+          <input type="date" [(ngModel)]="tallyEndDate" [max]="todayStr" class="date-input" />
+          <button class="btn-icon" (click)="onResetTallyDates()" title="Reset to last completed week">↺</button>
+          <button class="btn-primary"
+                  (click)="onFetchTally()"
+                  [disabled]="isFetchingTally || !tallyStartDate || !tallyEndDate || !!syncDateError(tallyStartDate, tallyEndDate)">
+            <span *ngIf="!isFetchingTally">🔍 Fetch Tally</span>
+            <span *ngIf="isFetchingTally">Loading…</span>
+          </button>
+        </div>
+      </div>
 
-          <!-- Header -->
-          <div class="flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
-            <div>
-              <div class="flex align-items-center gap-3 mb-1">
-                <i class="pi pi-database text-purple-400" style="font-size:1rem"></i>
-                <h2 class="m-0 text-white font-bold uppercase tracking-widest" style="font-size:.95rem">
-                  Data Tally
-                </h2>
-                <span class="text-[9px] font-mono px-2 py-1 border-round border-1 uppercase tracking-widest font-bold bg-purple-950/30 text-purple-400 border-purple-900">
-                  Phase 3
+      <div *ngIf="syncDateError(tallyStartDate, tallyEndDate)" class="date-error">
+        {{ syncDateError(tallyStartDate, tallyEndDate) }}
+      </div>
+      <div *ngIf="tallyError" class="tally-error">⚠ {{ tallyError }}</div>
+      <div *ngIf="!salesTally && !isFetchingTally && !tallyError" class="empty-state">
+        Select a date range and click <strong>Fetch Tally</strong> to compare DB data with Vendor Central.
+      </div>
+      <div *ngIf="isFetchingTally" class="empty-state">Fetching from Amazon SP-API…</div>
+
+      <ng-container *ngIf="salesTally">
+        <div *ngIf="salesTally.dailyAggregates?.length; else noWeekData" class="table-wrap">
+          <table class="week-table">
+            <thead>
+              <tr>
+                <th>Week Period</th>
+                <th class="right">Shipped Rev.</th>
+                <th class="right">Shipped Units</th>
+                <th class="right">COGS</th>
+                <th class="right">Margin</th>
+                <th class="right">Returns</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let row of salesTally.dailyAggregates">
+                <td class="week-cell">
+                  <span class="week-dot"></span>
+                  {{ row.start_date | slice:0:10 }} → {{ row.end_date | slice:0:10 }}
+                </td>
+                <td class="right rev">{{ formatCurrency(row.shipped_revenue_amount, 'USD') }}</td>
+                <td class="right">{{ formatNumber(row.shipped_units) }}</td>
+                <td class="right muted">{{ formatCurrency(row.shipped_cogs_amount, 'USD') }}</td>
+                <td class="right margin">
+                  {{ grossMarginPct(row.shipped_revenue_amount, row.shipped_cogs_amount) | number:'1.1-1' }}%
+                </td>
+                <td class="right ret">{{ formatNumber(row.customer_returns) }}</td>
+              </tr>
+            </tbody>
+            <tfoot>
+              <tr class="total-row">
+                <td>TOTAL · {{ salesTally.rowCount }} week{{ salesTally.rowCount !== 1 ? 's' : '' }}</td>
+                <td class="right">{{ formatCurrency(salesTally.totals.shippedRevenue, salesTally.totals.currency) }}</td>
+                <td class="right">{{ formatNumber(salesTally.totals.shippedUnits) }}</td>
+                <td class="right">{{ formatCurrency(salesTally.totals.shippedCogs, salesTally.totals.currency) }}</td>
+                <td class="right">{{ grossMarginPct(salesTally.totals.shippedRevenue, salesTally.totals.shippedCogs) | number:'1.1-1' }}%</td>
+                <td class="right">{{ formatNumber(salesTally.totals.customerReturns) }}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+        <ng-template #noWeekData>
+          <div class="no-data-warn">⚠ No sales data in DB for this range — run a sync first.</div>
+        </ng-template>
+
+        <!-- Inventory snapshot -->
+        <div class="inv-snapshot">
+          <div class="inv-snap-title">
+            📦 Inventory Snapshot ·
+            {{ salesTally.period.startDate | slice:0:10 }} → {{ salesTally.period.endDate | slice:0:10 }}
+          </div>
+          <ng-container *ngIf="inventoryTally && inventoryTally.rowCount > 0; else noInv">
+            <div class="inv-grid">
+              <div class="inv-row"><span>ASINs Tracked</span><span>{{ formatNumber(inventoryTally.summary.totalAsins) }}</span></div>
+              <div class="inv-row"><span>Sellable On-Hand</span><span class="green">{{ formatNumber(inventoryTally.summary.totalSellableUnits) }}</span></div>
+              <div class="inv-row"><span>Unsellable On-Hand</span><span class="red">{{ formatNumber(inventoryTally.summary.totalUnsellableUnits) }}</span></div>
+              <div class="inv-row">
+                <span>Avg OOS Rate</span>
+                <span [class.green]="inventoryTally.summary.avgOosRatePct <= 3"
+                      [class.yellow]="inventoryTally.summary.avgOosRatePct > 3 && inventoryTally.summary.avgOosRatePct <= 10"
+                      [class.red]="inventoryTally.summary.avgOosRatePct > 10">
+                  {{ formatPct(inventoryTally.summary.avgOosRatePct) }}
                 </span>
               </div>
-              <p class="text-[9px] font-mono text-gray-600 m-0 uppercase tracking-widest">
-                Compare DB numbers against Amazon Vendor Central portal
-              </p>
+              <div class="inv-row"><span>Open PO Units</span><span class="blue">{{ formatNumber(inventoryTally.summary.totalOpenPoUnits) }}</span></div>
             </div>
-            <div class="flex align-items-center gap-2 flex-wrap">
-              <input type="date" [(ngModel)]="tallyStartDate"
-                     class="bg-gray-900 border-1 border-gray-700 border-round text-gray-200 text-xs font-mono px-2 py-1"
-                     style="color-scheme:dark" />
-              <span class="text-gray-600 font-mono text-xs">→</span>
-              <input type="date" [(ngModel)]="tallyEndDate"
-                     class="bg-gray-900 border-1 border-gray-700 border-round text-gray-200 text-xs font-mono px-2 py-1"
-                     style="color-scheme:dark" />
-              <p-button icon="pi pi-replay" (onClick)="onResetTallyDates()" [text]="true"
-                        styleClass="p-0 text-gray-600" pTooltip="Reset to last completed week" tooltipPosition="top"></p-button>
-              <span style="--p-button-outlined-primary-border-color:#a855f7;--p-button-outlined-primary-color:#a855f7">
-                <p-button label="Fetch Tally" icon="pi pi-search"
-                          [loading]="isFetchingTally"
-                          [disabled]="!tallyStartDate || !tallyEndDate"
-                          styleClass="p-button-outlined text-[9px] font-bold uppercase tracking-widest"
-                          (onClick)="onFetchTally()"></p-button>
-              </span>
+          </ng-container>
+          <ng-template #noInv>
+            <div class="inv-no-data">No inventory data for this range · Run an inventory sync first</div>
+          </ng-template>
+        </div>
+      </ng-container>
+    </div>
+
+    <!-- ── Pipeline + Manual Sync (2 col) ───────────────────────────── -->
+    <div class="two-col">
+
+      <!-- Sales -->
+      <div class="section-card">
+        <div class="section-head">
+          <div>
+            <div class="section-title">
+              📈 Sales Report
+              <p-tag [severity]="statusSeverity(combined.sales)" [value]="statusLabel(combined.sales)"
+                     styleClass="ml-2 text-xs font-mono"></p-tag>
             </div>
+            <div class="section-sub">Cron: Wed 02:00 UTC · GET_VENDOR_SALES_REPORT</div>
           </div>
+          <p-progressSpinner *ngIf="combined.sales.isSyncing"
+                             styleClass="w-1rem h-1rem" strokeWidth="8" fill="transparent" animationDuration=".5s">
+          </p-progressSpinner>
+        </div>
 
-          <!-- Error state -->
-          <p-message *ngIf="tallyError" severity="error" [text]="tallyError"
-                     styleClass="w-full mb-3 text-xs"></p-message>
+        <div class="pipeline-stats">
+          <div class="pstat"><div class="pstat-lbl">Last Sync</div><div class="pstat-val">{{ formatLastRun(combined.sales.lastSyncFinishedAt) }}</div></div>
+          <div class="pstat"><div class="pstat-lbl">Next Run</div><div class="pstat-val orange">{{ formatNextRun(combined.sales.nextScheduledAt) }}</div></div>
+          <div class="pstat"><div class="pstat-lbl">Stage</div><div class="pstat-val" [class.orange]="combined.sales.isSyncing">{{ combined.sales.currentStage }}</div></div>
+        </div>
 
-          <!-- No data yet hint -->
-          <div *ngIf="!salesTally && !isFetchingTally && !tallyError"
-               class="text-center py-6 text-gray-700 font-mono text-xs border-round border-1 border-gray-900">
-            <i class="pi pi-search text-gray-700 mb-2" style="font-size:1.5rem;display:block"></i>
-            Select a date range and click <strong class="text-gray-500">Fetch Tally</strong> to compare DB data with Vendor Central.
-          </div>
+        <div class="period-chip" *ngIf="combined.sales.lastSyncPeriod">
+          Period: {{ combined.sales.lastSyncPeriod.startDate | slice:0:10 }} → {{ combined.sales.lastSyncPeriod.endDate | slice:0:10 }}
+        </div>
 
-          <!-- Results grid -->
-          <div class="grid" *ngIf="salesTally">
+        <p-message *ngIf="combined.sales.lastError" severity="error" [text]="combined.sales.lastError" styleClass="w-full mb-2"></p-message>
 
-            <!-- Sales totals -->
-            <div class="col-12 lg:col-6">
-              <div class="border-round border-1 border-purple-900 bg-purple-950/10 p-3 h-full">
-                <div class="flex align-items-center gap-2 mb-3">
-                  <i class="pi pi-chart-line text-orange-400 text-sm"></i>
-                  <h3 class="m-0 text-white font-bold uppercase tracking-widest" style="font-size:.8rem">
-                    Sales Totals
-                  </h3>
-                  <span class="text-[8px] font-mono text-gray-600">
-                    {{ salesTally.period.startDate }} → {{ salesTally.period.endDate }}
-                    ({{ salesTally.rowCount }} day{{ salesTally.rowCount !== 1 ? 's' : '' }})
-                  </span>
-                </div>
-
-                <div class="flex flex-column gap-2">
-                  <div class="flex justify-content-between align-items-center py-2 border-bottom-1 border-gray-900">
-                    <span class="text-[10px] font-mono text-gray-500 uppercase tracking-widest">Ordered Units</span>
-                    <span class="text-white font-mono font-bold text-sm">{{ formatNumber(salesTally.totals.orderedUnits) }}</span>
-                  </div>
-                  <div class="flex justify-content-between align-items-center py-2 border-bottom-1 border-gray-900">
-                    <span class="text-[10px] font-mono text-gray-500 uppercase tracking-widest">Ordered Revenue</span>
-                    <span class="text-green-400 font-mono font-bold text-sm">
-                      {{ formatCurrency(salesTally.totals.orderedRevenue, salesTally.totals.currency) }}
-                    </span>
-                  </div>
-                  <div class="flex justify-content-between align-items-center py-2 border-bottom-1 border-gray-900">
-                    <span class="text-[10px] font-mono text-gray-500 uppercase tracking-widest">Shipped Units</span>
-                    <span class="text-white font-mono font-bold text-sm">{{ formatNumber(salesTally.totals.shippedUnits) }}</span>
-                  </div>
-                  <div class="flex justify-content-between align-items-center py-2 border-bottom-1 border-gray-900">
-                    <span class="text-[10px] font-mono text-gray-500 uppercase tracking-widest">Shipped Revenue</span>
-                    <span class="text-green-400 font-mono font-bold text-sm">
-                      {{ formatCurrency(salesTally.totals.shippedRevenue, salesTally.totals.currency) }}
-                    </span>
-                  </div>
-                  <div class="flex justify-content-between align-items-center py-2 border-bottom-1 border-gray-900">
-                    <span class="text-[10px] font-mono text-gray-500 uppercase tracking-widest">Shipped COGS</span>
-                    <span class="text-yellow-400 font-mono font-bold text-sm">
-                      {{ formatCurrency(salesTally.totals.shippedCogs, salesTally.totals.currency) }}
-                    </span>
-                  </div>
-                  <div class="flex justify-content-between align-items-center py-2">
-                    <span class="text-[10px] font-mono text-gray-500 uppercase tracking-widest">Customer Returns</span>
-                    <span class="text-red-400 font-mono font-bold text-sm">{{ formatNumber(salesTally.totals.customerReturns) }}</span>
-                  </div>
-                </div>
-
-                <div *ngIf="salesTally.rowCount === 0"
-                     class="mt-3 text-center text-gray-600 font-mono text-xs py-3 border-round border-1 border-gray-800">
-                  No sales records in DB for this range.<br>
-                  <span class="text-gray-700">Run a sync first.</span>
-                </div>
-              </div>
+        <p-timeline [value]="salesPipeline" styleClass="customized-timeline">
+          <ng-template pTemplate="marker" let-step>
+            <span class="pipe-marker"
+                  [class.complete]="step.state==='complete'"
+                  [class.active]="step.state==='active' && combined.sales.lastSyncStatus!=='FAILED'"
+                  [class.failed]="step.state==='active' && combined.sales.lastSyncStatus==='FAILED'">
+              <i class="pi" style="font-size:10px"
+                 [ngClass]="{
+                   'pi-check':       step.state==='complete',
+                   'pi-bolt':        step.state==='active' && combined.sales.lastSyncStatus!=='FAILED',
+                   'pi-times':       step.state==='active' && combined.sales.lastSyncStatus==='FAILED',
+                   'pi-circle-fill': step.state==='pending'
+                 }"></i>
+            </span>
+          </ng-template>
+          <ng-template pTemplate="content" let-step>
+            <div class="pipe-step">
+              <span class="pipe-label" [class.pending]="step.state==='pending'">{{ step.label }}</span>
+              <span class="pipe-desc">{{ step.desc }}</span>
+              <span class="pipe-time">{{ step.time }}</span>
             </div>
+          </ng-template>
+        </p-timeline>
 
-            <!-- Inventory snapshot -->
-            <div class="col-12 lg:col-6">
-              <div class="border-round border-1 border-blue-900 bg-blue-950/10 p-3 h-full">
-                <div class="flex align-items-center gap-2 mb-3">
-                  <i class="pi pi-box text-blue-400 text-sm"></i>
-                  <h3 class="m-0 text-white font-bold uppercase tracking-widest" style="font-size:.8rem">
-                    Inventory Snapshot
-                  </h3>
-                  <span *ngIf="inventoryTally" class="text-[8px] font-mono text-gray-600">
-                    {{ inventoryTally.period.startDate }} → {{ inventoryTally.period.endDate }}
-                    ({{ inventoryTally.rowCount }} record{{ inventoryTally.rowCount !== 1 ? 's' : '' }})
-                  </span>
-                </div>
+        <div class="sync-panel">
+          <div class="sync-fields">
+            <input type="date" [(ngModel)]="salesSyncStart" [max]="todayStr" class="date-input" />
+            <span class="arrow">→</span>
+            <input type="date" [(ngModel)]="salesSyncEnd" [max]="todayStr" class="date-input" />
+          </div>
+          <div *ngIf="syncDateError(salesSyncStart, salesSyncEnd)" class="date-error">{{ syncDateError(salesSyncStart, salesSyncEnd) }}</div>
+          <button class="btn-sync" (click)="onSyncSalesNow()"
+                  [disabled]="isSalesRequesting || combined.sales.isSyncing || !!syncDateError(salesSyncStart, salesSyncEnd)">
+            {{ isSalesRequesting ? 'Starting…' : '↻ Sync Sales' }}
+          </button>
+        </div>
+      </div>
 
-                <ng-container *ngIf="inventoryTally; else noInventory">
-                  <div class="flex flex-column gap-2">
-                    <div class="flex justify-content-between align-items-center py-2 border-bottom-1 border-gray-900">
-                      <span class="text-[10px] font-mono text-gray-500 uppercase tracking-widest">ASINs Tracked</span>
-                      <span class="text-white font-mono font-bold text-sm">{{ formatNumber(inventoryTally.summary.totalAsins) }}</span>
-                    </div>
-                    <div class="flex justify-content-between align-items-center py-2 border-bottom-1 border-gray-900">
-                      <span class="text-[10px] font-mono text-gray-500 uppercase tracking-widest">Sellable On-Hand</span>
-                      <span class="text-green-400 font-mono font-bold text-sm">{{ formatNumber(inventoryTally.summary.totalSellableUnits) }}</span>
-                    </div>
-                    <div class="flex justify-content-between align-items-center py-2 border-bottom-1 border-gray-900">
-                      <span class="text-[10px] font-mono text-gray-500 uppercase tracking-widest">Unsellable On-Hand</span>
-                      <span class="text-red-400 font-mono font-bold text-sm">{{ formatNumber(inventoryTally.summary.totalUnsellableUnits) }}</span>
-                    </div>
-                    <div class="flex justify-content-between align-items-center py-2 border-bottom-1 border-gray-900">
-                      <span class="text-[10px] font-mono text-gray-500 uppercase tracking-widest">Avg OOS Rate</span>
-                      <span class="font-mono font-bold text-sm"
-                            [ngClass]="inventoryTally.summary.avgOosRatePct > 10 ? 'text-red-400' : inventoryTally.summary.avgOosRatePct > 3 ? 'text-yellow-400' : 'text-green-400'">
-                        {{ formatPct(inventoryTally.summary.avgOosRatePct) }}
-                      </span>
-                    </div>
-                    <div class="flex justify-content-between align-items-center py-2">
-                      <span class="text-[10px] font-mono text-gray-500 uppercase tracking-widest">Open PO Units</span>
-                      <span class="text-blue-400 font-mono font-bold text-sm">{{ formatNumber(inventoryTally.summary.totalOpenPoUnits) }}</span>
-                    </div>
-                  </div>
-
-                  <div *ngIf="inventoryTally.rowCount === 0"
-                       class="mt-3 text-center text-gray-600 font-mono text-xs py-3 border-round border-1 border-gray-800">
-                    No inventory records in DB for this range.<br>
-                    <span class="text-gray-700">Run a sync first.</span>
-                  </div>
-                </ng-container>
-
-                <ng-template #noInventory>
-                  <div class="text-center text-gray-700 font-mono text-xs py-6 border-round border-1 border-gray-800">
-                    Inventory data unavailable for this range.
-                  </div>
-                </ng-template>
-              </div>
+      <!-- Inventory -->
+      <div class="section-card">
+        <div class="section-head">
+          <div>
+            <div class="section-title">
+              📦 Inventory Report
+              <p-tag [severity]="statusSeverity(combined.inventory)" [value]="statusLabel(combined.inventory)"
+                     styleClass="ml-2 text-xs font-mono"></p-tag>
             </div>
+            <div class="section-sub">Cron: Sun 02:00 UTC · GET_VENDOR_INVENTORY_REPORT</div>
           </div>
+          <p-progressSpinner *ngIf="combined.inventory.isSyncing"
+                             styleClass="w-1rem h-1rem" strokeWidth="8" fill="transparent" animationDuration=".5s">
+          </p-progressSpinner>
+        </div>
 
-          <!-- How to compare tip -->
-          <div class="mt-4 pt-3 border-top-1 border-gray-900">
-            <p class="text-[9px] font-mono text-gray-700 m-0">
-              <span class="text-purple-500 font-bold">HOW TO COMPARE:</span>
-              In Vendor Central → Analytics → Sales Dashboard, select the same date range and weekly granularity.
-              "Ordered Units" + "Ordered Revenue" should match exactly after the Phase 3 data finalization lag fix.
-              Inventory: go to Vendor Central → Inventory → Health.
-            </p>
+        <div class="pipeline-stats">
+          <div class="pstat"><div class="pstat-lbl">Last Sync</div><div class="pstat-val">{{ formatLastRun(combined.inventory.lastSyncFinishedAt) }}</div></div>
+          <div class="pstat"><div class="pstat-lbl">Next Run</div><div class="pstat-val orange">{{ formatNextRun(combined.inventory.nextScheduledAt) }}</div></div>
+          <div class="pstat"><div class="pstat-lbl">Stage</div><div class="pstat-val" [class.orange]="combined.inventory.isSyncing">{{ combined.inventory.currentStage }}</div></div>
+        </div>
+
+        <div class="period-chip" *ngIf="combined.inventory.lastSyncPeriod">
+          Period: {{ combined.inventory.lastSyncPeriod.startDate | slice:0:10 }} → {{ combined.inventory.lastSyncPeriod.endDate | slice:0:10 }}
+        </div>
+
+        <p-message *ngIf="combined.inventory.lastError" severity="error" [text]="combined.inventory.lastError" styleClass="w-full mb-2"></p-message>
+
+        <p-timeline [value]="inventoryPipeline" styleClass="customized-timeline">
+          <ng-template pTemplate="marker" let-step>
+            <span class="pipe-marker"
+                  [class.complete]="step.state==='complete'"
+                  [class.active]="step.state==='active' && combined.inventory.lastSyncStatus!=='FAILED'"
+                  [class.failed]="step.state==='active' && combined.inventory.lastSyncStatus==='FAILED'">
+              <i class="pi" style="font-size:10px"
+                 [ngClass]="{
+                   'pi-check':       step.state==='complete',
+                   'pi-bolt':        step.state==='active' && combined.inventory.lastSyncStatus!=='FAILED',
+                   'pi-times':       step.state==='active' && combined.inventory.lastSyncStatus==='FAILED',
+                   'pi-circle-fill': step.state==='pending'
+                 }"></i>
+            </span>
+          </ng-template>
+          <ng-template pTemplate="content" let-step>
+            <div class="pipe-step">
+              <span class="pipe-label" [class.pending]="step.state==='pending'">{{ step.label }}</span>
+              <span class="pipe-desc">{{ step.desc }}</span>
+              <span class="pipe-time">{{ step.time }}</span>
+            </div>
+          </ng-template>
+        </p-timeline>
+
+        <div class="sync-panel">
+          <div class="sync-fields">
+            <input type="date" [(ngModel)]="inventorySyncStart" [max]="todayStr" class="date-input" />
+            <span class="arrow">→</span>
+            <input type="date" [(ngModel)]="inventorySyncEnd" [max]="todayStr" class="date-input" />
           </div>
-
+          <div *ngIf="syncDateError(inventorySyncStart, inventorySyncEnd)" class="date-error">{{ syncDateError(inventorySyncStart, inventorySyncEnd) }}</div>
+          <button class="btn-sync btn-inv" (click)="onSyncInventoryNow()"
+                  [disabled]="isInventoryRequesting || combined.inventory.isSyncing || !!syncDateError(inventorySyncStart, inventorySyncEnd)">
+            {{ isInventoryRequesting ? 'Starting…' : '↻ Sync Inventory' }}
+          </button>
         </div>
       </div>
     </div>
 
-    <!-- ── Row 3: Phase 2 — Quota Health + Rate Limiter ────────────── -->
-    <div class="grid mb-5">
-
-      <!-- Quota Groups (Phase 2) -->
-      <div class="col-12 lg:col-5">
-        <div class="dashboard-card dark-card h-full">
-          <div class="flex justify-content-between align-items-center mb-4">
-            <h2 class="accent-heading m-0">API Quota Health</h2>
-            <span class="text-[9px] font-mono text-gray-600">Polls every 15s</span>
-          </div>
-
-          <!-- Rate limiter config summary -->
-          <div class="grid mb-4">
-            <div class="col-12">
-              <div class="flex flex-column gap-2">
-                <div class="flex justify-content-between align-items-center py-1 border-bottom-1 border-gray-900">
-                  <span class="text-[9px] font-mono text-gray-500 uppercase tracking-widest">createReport</span>
-                  <span class="text-[10px] font-mono font-bold text-orange-400">{{ health.rateLimiters.createReport }}</span>
-                </div>
-                <div class="flex justify-content-between align-items-center py-1 border-bottom-1 border-gray-900">
-                  <span class="text-[9px] font-mono text-gray-500 uppercase tracking-widest">getReport (poll)</span>
-                  <span class="text-[10px] font-mono font-bold text-blue-400">{{ health.rateLimiters.getReport }}</span>
-                </div>
-                <div class="flex justify-content-between align-items-center py-1 border-bottom-1 border-gray-900">
-                  <span class="text-[9px] font-mono text-gray-500 uppercase tracking-widest">getReportDocument</span>
-                  <span class="text-[10px] font-mono font-bold text-orange-400">{{ health.rateLimiters.getReportDocument }}</span>
-                </div>
-                <div class="flex justify-content-between align-items-center py-1">
-                  <span class="text-[9px] font-mono text-gray-500 uppercase tracking-widest">Concurrency</span>
-                  <span class="text-[10px] font-mono font-bold text-green-400">{{ health.rateLimiters.concurrency }}</span>
-                </div>
-              </div>
+    <!-- ── API Quota + Rate Limiter ──────────────────────────────────── -->
+    <div class="two-col">
+      <div class="section-card">
+        <div class="section-head">
+          <div class="section-title">🛡️ API Quota Health</div>
+          <span class="section-sub">Polls every 15s</span>
+        </div>
+        <div class="quota-limits">
+          <div class="ql-row"><span>createReport</span><span class="orange">{{ health.rateLimiters.createReport }}</span></div>
+          <div class="ql-row"><span>getReport (poll)</span><span class="blue">{{ health.rateLimiters.getReport }}</span></div>
+          <div class="ql-row"><span>getReportDocument</span><span class="orange">{{ health.rateLimiters.getReportDocument }}</span></div>
+          <div class="ql-row"><span>Concurrency</span><span class="green">{{ health.rateLimiters.concurrency }}</span></div>
+        </div>
+        <div *ngFor="let g of health.quotaGroups; trackBy: trackByGroup"
+             class="quota-group"
+             [class.quota-ok]="g.status==='OK'"
+             [class.quota-cooldown]="g.status==='COOLDOWN'">
+          <div>
+            <div class="qg-name">{{ g.group }}</div>
+            <div class="qg-meta">
+              <span *ngIf="g.lastSuccess">ok: {{ formatTime(g.lastSuccess) }}</span>
+              <span *ngIf="g.last429" class="red" style="margin-left:8px">429: {{ formatTime(g.last429) }}</span>
             </div>
-          </div>
-
-          <!-- Per-group quota status -->
-          <div *ngFor="let g of health.quotaGroups; trackBy: trackByGroup" class="mb-2">
-            <div class="flex justify-content-between align-items-center px-2 py-2 border-round border-1"
-                 [ngClass]="{
-                   'border-green-900 bg-green-950/20': g.status === 'OK',
-                   'border-red-900 bg-red-950/30':     g.status === 'COOLDOWN',
-                   'border-gray-800 bg-gray-900/20':   g.status === 'UNKNOWN'
-                 }">
-              <div>
-                <p class="text-[9px] font-mono font-bold uppercase tracking-widest m-0"
-                   [ngClass]="g.status === 'COOLDOWN' ? 'text-red-400' : 'text-gray-300'">
-                  {{ g.group }}
-                </p>
-                <p class="text-[8px] font-mono text-gray-600 m-0">
-                  <span *ngIf="g.lastSuccess">last ok: {{ formatTime(g.lastSuccess) }}</span>
-                  <span *ngIf="g.last429" class="text-red-600 ml-2">last 429: {{ formatTime(g.last429) }}</span>
-                </p>
-              </div>
-              <p-tag [severity]="quotaSeverity(g)"
-                     [value]="quotaLabel(g)"
-                     styleClass="text-[8px] font-mono tracking-widest"></p-tag>
-            </div>
-
-            <!-- Cooldown countdown -->
-            <div *ngIf="g.status === 'COOLDOWN' && g.cooldownUntil"
-                 class="text-[8px] font-mono text-red-500 px-2 mt-1">
+            <div *ngIf="g.status==='COOLDOWN' && g.cooldownUntil" class="qg-cooldown">
               ⏳ Cooldown until {{ formatTime(g.cooldownUntil) }}
             </div>
           </div>
-
-          <!-- No quota data yet -->
-          <div *ngIf="!health.quotaGroups?.length"
-               class="text-center text-gray-700 font-mono text-[10px] py-4">
-            No API calls made yet — quota data will appear after first sync.
-          </div>
+          <p-tag [severity]="quotaSeverity(g)" [value]="quotaLabel(g)" styleClass="text-xs font-mono"></p-tag>
+        </div>
+        <div *ngIf="!health.quotaGroups?.length" class="empty-state">
+          No API calls yet — quota data appears after first sync.
         </div>
       </div>
 
-      <!-- Rate Limiter Chart -->
-      <div class="col-12 lg:col-7">
-        <div class="dashboard-card dark-card h-full">
-          <div class="flex justify-content-between align-items-center mb-4">
-            <h2 class="accent-heading m-0">Rate Limiter Telemetry</h2>
-            <div class="flex gap-2">
-              <span class="text-[9px] font-mono px-2 py-1 border-round border-1 uppercase tracking-widest font-bold bg-red-950/30 text-red-400 border-red-900">
-                429 Guard: ON
-              </span>
-              <span class="text-[9px] font-mono px-2 py-1 border-round border-1 uppercase tracking-widest font-bold bg-green-950/30 text-green-400 border-green-900">
-                Bottleneck
-              </span>
-            </div>
+      <div class="section-card">
+        <div class="section-head">
+          <div class="section-title">📡 Rate Limiter Telemetry</div>
+          <div style="display:flex;gap:6px">
+            <span class="tag-chip tag-red">429 Guard: ON</span>
+            <span class="tag-chip tag-green">Bottleneck: ON</span>
           </div>
-
-          <div class="chart-container">
-            <p-chart type="line" [data]="chartData" [options]="chartOptions"></p-chart>
-          </div>
-
-          <div class="mt-4 pt-3 border-top-1 border-gray-900">
-            <div class="grid text-center">
-              <div class="col-4">
-                <p class="text-[8px] uppercase tracking-widest font-mono text-gray-600 m-0">Create Report</p>
-                <p class="text-orange-400 font-mono text-xs font-bold m-0">1 / 65s</p>
-              </div>
-              <div class="col-4">
-                <p class="text-[8px] uppercase tracking-widest font-mono text-gray-600 m-0">Poll Status</p>
-                <p class="text-blue-400 font-mono text-xs font-bold m-0">1 / 2s</p>
-              </div>
-              <div class="col-4">
-                <p class="text-[8px] uppercase tracking-widest font-mono text-gray-600 m-0">Get Document</p>
-                <p class="text-orange-400 font-mono text-xs font-bold m-0">1 / 65s</p>
-              </div>
-            </div>
-          </div>
-
-          <!-- Phase 2 status summary -->
-          <div class="mt-3 px-3 py-2 border-round border-1 border-green-900 bg-green-950/10">
-            <p class="text-[9px] font-mono text-green-400 m-0 uppercase tracking-widest font-bold">
-              Phase 2 Fixes Active
-            </p>
-            <p class="text-[9px] font-mono text-gray-500 m-0 mt-1">
-              ✅ Redis token cache shared across all services &nbsp;|&nbsp;
-              ✅ Bottleneck maxConcurrent: 1 &nbsp;|&nbsp;
-              ✅ Retry-After header respected &nbsp;|&nbsp;
-              ✅ Dynamic throttle via x-amzn-ratelimit-limit
-            </p>
-          </div>
+        </div>
+        <div class="chart-container">
+          <p-chart type="line" [data]="chartData" [options]="chartOptions"></p-chart>
+        </div>
+        <div class="phase2-summary">
+          ✅ Redis token cache &nbsp;|&nbsp;
+          ✅ Bottleneck maxConcurrent:1 &nbsp;|&nbsp;
+          ✅ Retry-After respected &nbsp;|&nbsp;
+          ✅ Dynamic throttle via x-amzn-ratelimit-limit
         </div>
       </div>
     </div>

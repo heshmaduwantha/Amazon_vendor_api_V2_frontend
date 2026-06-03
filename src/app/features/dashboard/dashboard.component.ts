@@ -1,5 +1,5 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Subscription, Observable } from 'rxjs';
 import { ChartModule } from 'primeng/chart';
@@ -27,7 +27,8 @@ import {
   selector: 'app-dashboard',
   standalone: true,
   imports: [
-    CommonModule, FormsModule, ChartModule, TimelineModule, ProgressSpinnerModule,
+    CommonModule, FormsModule, DatePipe,
+    ChartModule, TimelineModule, ProgressSpinnerModule,
     MessageModule, ButtonModule, ToastModule, TagModule, TooltipModule,
   ],
   templateUrl: './dashboard.component.html',
@@ -45,11 +46,18 @@ export class DashboardComponent implements OnInit, OnDestroy {
   isInventoryRequesting = false;
   isForecastRequesting  = false;
 
-  // ── Manual Sync Date Range ────────────────────────────────────────────────
-  syncStartDate = '';
-  syncEndDate   = '';
+  // ── Today ─────────────────────────────────────────────────────────────────
+  todayStr = new Date().toISOString().split('T')[0];
 
-  // ── Phase 3: Data Tally ───────────────────────────────────────────────────
+  // ── Sales Manual Sync ─────────────────────────────────────────────────────
+  salesSyncStart = '';
+  salesSyncEnd   = '';
+
+  // ── Inventory Manual Sync ─────────────────────────────────────────────────
+  inventorySyncStart = '';
+  inventorySyncEnd   = '';
+
+  // ── Tally ─────────────────────────────────────────────────────────────────
   tallyStartDate    = '';
   tallyEndDate      = '';
   salesTally:       SalesSummaryResult      | null = null;
@@ -58,7 +66,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
   isFetchingTally   = false;
   tallyError:       string | null = null;
 
-  // ── ASIN Drill-down ───────────────────────────────────────────────────────
   salesAsinRows:     any[] = [];
   inventoryAsinRows: any[] = [];
   showAsinTable     = false;
@@ -88,26 +95,34 @@ export class DashboardComponent implements OnInit, OnDestroy {
     );
     this.initChart();
 
-    // Pre-fill sync date range with yesterday (1 day → minimal quota usage)
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
     const yStr = yesterday.toISOString().split('T')[0];
-    this.syncStartDate = yStr;
-    this.syncEndDate   = yStr;
+    this.salesSyncStart     = yStr;
+    this.salesSyncEnd       = yStr;
+    this.inventorySyncStart = yStr;
+    this.inventorySyncEnd   = yStr;
 
-    // Pre-fill tally date range with last completed week (Phase 3)
     const { startDate, endDate } = this.dashboardService.getLastCompletedWeekDates(3);
     this.tallyStartDate = startDate;
     this.tallyEndDate   = endDate;
+  }
+
+  // ── Date validation ───────────────────────────────────────────────────────
+
+  syncDateError(start: string, end: string): string | null {
+    if (!start || !end) return null;
+    if (start > this.todayStr) return '✗ Start date is in the future';
+    if (end   > this.todayStr) return '✗ End date cannot exceed today';
+    if (start > end)           return '✗ Start date must be before end date';
+    return null;
   }
 
   // ── Manual Triggers ───────────────────────────────────────────────────────
 
   onSyncSalesNow(): void {
     this.isSalesRequesting = true;
-    const startDate = this.syncStartDate || this.lastSevenDays().startDate;
-    const endDate   = this.syncEndDate   || this.lastSevenDays().endDate;
-    this.dashboardService.triggerSalesSync(startDate, endDate).subscribe({
+    this.dashboardService.triggerSalesSync(this.salesSyncStart, this.salesSyncEnd).subscribe({
       next: (res: any) => {
         this.messageService.add({ severity: 'success', summary: 'Sales Sync Started', detail: res.message });
         this.isSalesRequesting = false;
@@ -124,9 +139,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   onSyncInventoryNow(): void {
     this.isInventoryRequesting = true;
-    const startDate = this.syncStartDate || this.lastSevenDays().startDate;
-    const endDate   = this.syncEndDate   || this.lastSevenDays().endDate;
-    this.dashboardService.triggerInventorySync(startDate, endDate).subscribe({
+    this.dashboardService.triggerInventorySync(this.inventorySyncStart, this.inventorySyncEnd).subscribe({
       next: (res: any) => {
         this.messageService.add({ severity: 'success', summary: 'Inventory Sync Started', detail: res.message });
         this.isInventoryRequesting = false;
@@ -141,84 +154,50 @@ export class DashboardComponent implements OnInit, OnDestroy {
     });
   }
 
-  onSyncForecastNow(): void {
-    this.isForecastRequesting = true;
-    const startDate = this.syncStartDate || this.lastSevenDays().startDate;
-    const endDate   = this.syncEndDate   || this.lastSevenDays().endDate;
-    this.dashboardService.triggerForecastSync(startDate, endDate).subscribe({
-      next: (res: any) => {
-        this.messageService.add({ severity: 'success', summary: 'Forecast Sync Started', detail: res.message });
-        this.isForecastRequesting = false;
-      },
-      error: (err: any) => {
-        const detail = err.status === 409
-          ? 'Forecast sync is already running.'
-          : err.error?.message || 'Could not initiate forecast sync.';
-        this.messageService.add({ severity: err.status === 409 ? 'warn' : 'error', summary: 'Forecast Sync', detail });
-        this.isForecastRequesting = false;
-      },
-    });
-  }
-
-  // ── Phase 3: Data Tally ───────────────────────────────────────────────────
+  // ── Tally ─────────────────────────────────────────────────────────────────
 
   onFetchTally(): void {
     if (!this.tallyStartDate || !this.tallyEndDate) return;
-    this.isFetchingTally = true;
-    this.tallyError      = null;
-    this.salesTally      = null;
-    this.inventoryTally  = null;
-    this.forecastTally   = null;
-    this.salesAsinRows   = [];
+    if (this.syncDateError(this.tallyStartDate, this.tallyEndDate)) return;
+    this.isFetchingTally   = true;
+    this.tallyError        = null;
+    this.salesTally        = null;
+    this.inventoryTally    = null;
+    this.forecastTally     = null;
+    this.salesAsinRows     = [];
     this.inventoryAsinRows = [];
-    this.showAsinTable   = false;
 
-    // Sales summary
     this.subs.add(
       this.dashboardService.getSalesSummary(this.tallyStartDate, this.tallyEndDate).subscribe({
-        next:  res  => { this.salesTally = res; this.checkTallyDone(); },
+        next:  res  => { this.salesTally = res; this.isFetchingTally = false; },
         error: err  => { this.tallyError = err.error?.message || 'Failed to fetch sales tally.'; this.isFetchingTally = false; },
       }),
     );
-    // Inventory snapshot
     this.subs.add(
       this.dashboardService.getInventorySnapshot(this.tallyStartDate, this.tallyEndDate).subscribe({
-        next:  res  => { this.inventoryTally = res; this.checkTallyDone(); },
-        error: _err => { this.checkTallyDone(); },
+        next:  res  => { this.inventoryTally = res; },
+        error: _err => {},
       }),
     );
-    // Forecast snapshot
-    this.subs.add(
-      this.dashboardService.getForecastSnapshot(this.tallyStartDate, this.tallyEndDate).subscribe({
-        next:  res  => { this.forecastTally = res; this.checkTallyDone(); },
-        error: _err => { this.checkTallyDone(); },
-      }),
-    );
-    // ASIN rows
     this.subs.add(
       this.dashboardService.getSalesByAsin(this.tallyStartDate, this.tallyEndDate).subscribe({
         next:  rows => { this.salesAsinRows = rows; },
         error: _err => {},
       }),
     );
-    this.subs.add(
-      this.dashboardService.getInventoryByAsin(this.tallyStartDate, this.tallyEndDate).subscribe({
-        next:  rows => { this.inventoryAsinRows = rows; },
-        error: _err => {},
-      }),
-    );
-  }
-
-  toggleAsinTable(): void { this.showAsinTable = !this.showAsinTable; }
-
-  private checkTallyDone(): void {
-    if (this.salesTally !== null) this.isFetchingTally = false;
   }
 
   onResetTallyDates(): void {
     const { startDate, endDate } = this.dashboardService.getLastCompletedWeekDates(3);
     this.tallyStartDate = startDate;
     this.tallyEndDate   = endDate;
+  }
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
+
+  grossMarginPct(revenue: number, cogs: number): number {
+    if (!revenue) return 0;
+    return ((revenue - cogs) / revenue) * 100;
   }
 
   formatCurrency(amount: number, currency = 'USD'): string {
@@ -232,8 +211,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
   formatPct(n: number): string {
     return n.toFixed(2) + '%';
   }
-
-  // ── Template Helpers ──────────────────────────────────────────────────────
 
   formatNextRun(iso: string):        string { return this.dashboardService.formatNextRun(iso); }
   formatLastRun(iso: string | null): string { return this.dashboardService.formatLastRun(iso); }
@@ -261,47 +238,36 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   quotaLabel(g: QuotaGroup): string {
     if (g.status === 'COOLDOWN') return `COOLDOWN (${g.consecutive429s}x 429)`;
-    if (g.consecutive429s > 0)   return `OK (${g.consecutive429s}x 429 history)`;
+    if (g.consecutive429s > 0)   return `OK (${g.consecutive429s}x 429)`;
     return 'OK';
   }
 
   trackByGroup(i: number, g: QuotaGroup): string { return g.group; }
 
-  private lastSevenDays(): { startDate: string; endDate: string } {
-    const end   = new Date(); end.setDate(end.getDate() - 1);
-    const start = new Date(end); start.setDate(end.getDate() - 6);
-    return {
-      startDate: start.toISOString().split('T')[0],
-      endDate:   end.toISOString().split('T')[0],
-    };
-  }
-
   initChart(): void {
-    const textColor = '#64748b';
-    const gridColor = 'rgba(255,255,255,0.05)';
+    const textColor = '#4b5563';
+    const gridColor = 'rgba(255,255,255,0.04)';
     this.chartData = {
       labels: ['1s','2s','3s','4s','5s','6s','7s','8s','9s','10s'],
       datasets: [
         {
           label: 'Amazon Limit (0.016 req/s)',
-          data: [0.016,0.016,0.016,0.016,0.016,0.016,0.016,0.016,0.016,0.016],
-          fill: false, borderColor: '#3b82f6', borderWidth: 2,
-          pointRadius: 0, borderDash: [5,5], tension: 0,
+          data: Array(10).fill(0.016),
+          fill: false, borderColor: '#6366f1', borderWidth: 1,
+          pointRadius: 0, borderDash: [4,4], tension: 0,
         },
         {
-          label: 'Our Rate (Bottleneck enforced)',
-          data: [0.015,0.015,0.015,0.015,0.015,0.015,0.015,0.015,0.015,0.015],
+          label: 'Our Rate',
+          data: Array(10).fill(0.015),
           fill: true, borderColor: '#10b981', borderWidth: 2,
-          backgroundColor: 'rgba(16,185,129,0.15)',
-          pointRadius: 3, pointBackgroundColor: '#10b981', tension: 0.4,
+          backgroundColor: 'rgba(16,185,129,0.1)',
+          pointRadius: 2, pointBackgroundColor: '#10b981', tension: 0.4,
         },
       ],
     };
     this.chartOptions = {
       maintainAspectRatio: false, responsive: true,
-      plugins: {
-        legend: { display: true, labels: { color: textColor, font: { family: 'monospace', size: 10 } } },
-      },
+      plugins: { legend: { display: true, labels: { color: textColor, font: { family: 'monospace', size: 10 } } } },
       scales: {
         x: { ticks: { color: textColor, font: { size: 10 } }, grid: { display: false } },
         y: { min: 0, max: 0.02,

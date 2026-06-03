@@ -1,21 +1,26 @@
-<div class="layout-wrapper flex h-screen overflow-hidden bg-black">
-  
-  <!-- Sidebar (Fixed Left) -->
-  <div class="layout-sidebar border-right-1 dark-sidebar border-gray-900" 
+<div class="layout-wrapper flex h-screen overflow-hidden" style="background:#f1f5f9">
+
+  <!-- Sidebar -->
+  <div class="layout-sidebar"
        [style.width.px]="sidebarVisible ? 220 : 0"
-       style="transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); overflow: hidden;">
-    
-    <div class="brand-section flex align-items-center justify-content-center border-gray-900">
-      <i class="pi pi-amazon text-2xl text-white"></i>
+       style="transition: width 0.3s cubic-bezier(0.4,0,0.2,1); overflow:hidden; flex-shrink:0;">
+
+    <div class="brand-section flex align-items-center gap-3 border-bottom-1" style="border-color:rgba(255,255,255,0.06)">
+      <div style="width:36px;height:36px;background:#f97316;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:17px;color:#fff;flex-shrink:0;">A</div>
+      <div>
+        <div style="font-size:14px;font-weight:700;color:#fff;line-height:1.2">Vendor API</div>
+        <div style="font-size:11px;color:#64748b;margin-top:2px">v3.0 · US</div>
+      </div>
     </div>
 
     <div class="py-3 px-2">
-      <p-menu [model]="sidebarItems" [style]="{'width': '100%', 'border': 'none', 'background': 'transparent'}"></p-menu>
+      <div style="font-size:10px;font-weight:700;color:#475569;letter-spacing:0.1em;text-transform:uppercase;padding:6px 10px 4px">Main</div>
+      <p-menu [model]="sidebarItems" [style]="{'width':'100%','border':'none','background':'transparent'}"></p-menu>
     </div>
   </div>
 
-  <!-- Main Content Area -->
-  <div class="layout-main flex-1 flex flex-column min-w-0 bg-black">
+  <!-- Main Content -->
+  <div class="layout-main flex-1 flex flex-column min-w-0">
     <div class="layout-content flex-1 overflow-y-auto p-0">
       <router-outlet></router-outlet>
     </div>
