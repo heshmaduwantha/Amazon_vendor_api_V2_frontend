@@ -22,6 +22,7 @@ import {
   InventorySnapshotResult,
   ForecastSnapshotResult,
 } from '../../data/services/dashboard.service';
+import { SyncTimelineComponent, SyncReportMeta } from './components/sync-timeline/sync-timeline.component';
 
 @Component({
   selector: 'app-dashboard',
@@ -30,6 +31,7 @@ import {
     CommonModule, FormsModule, DatePipe,
     ChartModule, TimelineModule, ProgressSpinnerModule,
     MessageModule, ButtonModule, ToastModule, TagModule, TooltipModule,
+    SyncTimelineComponent
   ],
   templateUrl: './dashboard.component.html',
   styleUrls:  ['./dashboard.component.scss'],
@@ -95,13 +97,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
     );
     this.initChart();
 
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yStr = yesterday.toISOString().split('T')[0];
-    this.salesSyncStart     = yStr;
-    this.salesSyncEnd       = yStr;
-    this.inventorySyncStart = yStr;
-    this.inventorySyncEnd   = yStr;
+    this.salesSyncStart     = '';
+    this.salesSyncEnd       = '';
+    this.inventorySyncStart = '';
+    this.inventorySyncEnd   = '';
 
     const { startDate, endDate } = this.dashboardService.getLastCompletedWeekDates(3);
     this.tallyStartDate = startDate;
@@ -112,10 +111,60 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   syncDateError(start: string, end: string): string | null {
     if (!start || !end) return null;
-    if (start > this.todayStr) return '✗ Start date is in the future';
-    if (end   > this.todayStr) return '✗ End date cannot exceed today';
-    if (start > end)           return '✗ Start date must be before end date';
+    if (start > this.todayStr) return '• Start date is in the future';
+    if (end   > this.todayStr) return '• End date cannot exceed today';
+    if (start > end)           return '• Start date must be before end date';
     return null;
+  }
+
+  getAmazonWeekNumber(dateStr: string): number {
+    if (!dateStr) return 0;
+    const date = new Date(dateStr);
+    const day = date.getDay();
+    const sunday = new Date(date);
+    sunday.setDate(date.getDate() - day);
+    
+    // Amazon 2026 Week 1 starts on 2025-12-28
+    const week1Start = new Date('2025-12-28T00:00:00');
+    
+    const utcSunday = Date.UTC(sunday.getFullYear(), sunday.getMonth(), sunday.getDate());
+    const utcWeek1 = Date.UTC(week1Start.getFullYear(), week1Start.getMonth(), week1Start.getDate());
+    
+    const diffDays = Math.floor((utcSunday - utcWeek1) / (1000 * 60 * 60 * 24));
+    return Math.floor(diffDays / 7) + 1;
+  }
+
+  buildSyncReportMeta(status: ReportSyncStatus, name: string, path: string): SyncReportMeta {
+    let mappedStatus: 'COMPLETED' | 'RUNNING' | 'FAILED' | 'PENDING' = 'PENDING';
+    if (status.lastSyncStatus === 'SUCCESS') mappedStatus = 'COMPLETED';
+    else if (status.lastSyncStatus === 'IN_PROGRESS') mappedStatus = 'RUNNING';
+    else if (status.lastSyncStatus === 'FAILED') mappedStatus = 'FAILED';
+
+    let lastRun = 'Never';
+    if (status.lastSyncFinishedAt || status.lastSyncStartedAt) {
+      const d = new Date(status.lastSyncFinishedAt || status.lastSyncStartedAt || '');
+      lastRun = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' ' + 
+                d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+    }
+
+    let duration = '--';
+    if (status.lastSyncStartedAt && status.lastSyncFinishedAt) {
+      const ms = new Date(status.lastSyncFinishedAt).getTime() - new Date(status.lastSyncStartedAt).getTime();
+      const s = Math.floor(ms / 1000);
+      duration = s >= 60 ? `${Math.floor(s/60)}m ${s%60}s` : `${s}s`;
+    } else if (status.lastSyncStartedAt) {
+      duration = 'Running...';
+    }
+
+    return {
+      name,
+      path,
+      status: mappedStatus,
+      lastRun,
+      nextRun: this.dashboardService.formatNextRun(status.nextScheduledAt),
+      duration,
+      errorMessage: status.lastError || undefined
+    };
   }
 
   // ── Manual Triggers ───────────────────────────────────────────────────────
@@ -125,6 +174,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.dashboardService.triggerSalesSync(this.salesSyncStart, this.salesSyncEnd).subscribe({
       next: (res: any) => {
         this.messageService.add({ severity: 'success', summary: 'Sales Sync Started', detail: res.message });
+        this.salesSyncStart = '';
+        this.salesSyncEnd = '';
         this.isSalesRequesting = false;
       },
       error: (err: any) => {
@@ -142,6 +193,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.dashboardService.triggerInventorySync(this.inventorySyncStart, this.inventorySyncEnd).subscribe({
       next: (res: any) => {
         this.messageService.add({ severity: 'success', summary: 'Inventory Sync Started', detail: res.message });
+        this.inventorySyncStart = '';
+        this.inventorySyncEnd = '';
         this.isInventoryRequesting = false;
       },
       error: (err: any) => {

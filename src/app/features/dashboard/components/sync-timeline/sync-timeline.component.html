@@ -1,0 +1,113 @@
+<div class="dashboard-card">
+
+  <!-- Header -->
+  <div class="card-header">
+    <div class="report-title">
+      <div class="title-icon">
+        <i class="pi pi-sync"></i>
+      </div>
+      <div>
+        <h2>{{ report.name }}</h2>
+        <p class="report-path">{{ report.path }}</p>
+      </div>
+    </div>
+
+    <span class="status-badge"
+          [ngClass]="{
+            'status-completed': report.status === 'COMPLETED',
+            'status-progress':  report.status === 'RUNNING',
+            'status-failed':    report.status === 'FAILED',
+            'status-pending':   report.status === 'PENDING'
+          }">
+      <i [ngClass]="{
+           'pi pi-check-circle': report.status === 'COMPLETED',
+           'pi pi-spin pi-spinner': report.status === 'RUNNING',
+           'pi pi-times-circle': report.status === 'FAILED',
+           'pi pi-clock':        report.status === 'PENDING'
+         }"></i>
+      {{ report.status }}
+    </span>
+  </div>
+
+  <!-- Meta info row -->
+  <div class="meta-row">
+    <div class="meta-item">
+      <span class="meta-label">Last Run</span>
+      <span class="meta-value">{{ report.lastRun }}</span>
+    </div>
+    <div class="meta-item">
+      <span class="meta-label">Next Run</span>
+      <span class="meta-value">{{ report.nextRun }}</span>
+    </div>
+    <div class="meta-item">
+      <span class="meta-label">Duration</span>
+      <span class="meta-value">{{ report.duration }}</span>
+    </div>
+    <div class="meta-item">
+      <span class="meta-label">Status</span>
+      <span class="meta-value highlight">{{ report.status }}</span>
+    </div>
+  </div>
+
+  <!-- Error banner (conditional) -->
+  @if (report.errorMessage) {
+    <div class="error-banner">
+      <i class="pi pi-exclamation-circle"></i>
+      <span>{{ report.errorMessage }}</span>
+    </div>
+  }
+
+  <!-- Horizontal Pipeline -->
+  <div class="pipeline-scroll">
+    <div class="pipeline-track">
+
+      @for (stage of stages; track stage.label; let i = $index) {
+        <div class="pipeline-stage">
+
+          <!-- Stage node + label -->
+          <div class="stage-body">
+            <div class="stage-node" [ngClass]="nodeClass(stage.state)">
+              @if (stage.state === 'progress') {
+                <span class="pulse-ring"></span>
+              }
+              <i [ngClass]="stage.icon"></i>
+            </div>
+
+            <div class="stage-label" [ngClass]="'label-' + stage.state">
+              <span class="stage-name">{{ stage.label }}</span>
+              <span class="stage-desc">{{ stage.desc }}</span>
+              @if (stage.time && stage.time !== '--:--:--') {
+                <span class="stage-time">{{ stage.time }}</span>
+              }
+            </div>
+          </div>
+
+          <!-- Connector (not after last item) -->
+          @if (i < stages.length - 1) {
+            <div class="connector" [ngClass]="connectorClass(stage.state, stages[i + 1].state)">
+              <div class="connector-line"></div>
+            </div>
+          }
+
+        </div>
+      }
+
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="card-footer">
+    <div class="period-selector">
+      <span class="period-label">Period</span>
+      <input class="period-input" type="date" [ngModel]="periodStart" (ngModelChange)="periodStartChange.emit($event)" />
+      <span class="period-sep">&mdash;</span>
+      <input class="period-input" type="date" [ngModel]="periodEnd" (ngModelChange)="periodEndChange.emit($event)" />
+    </div>
+
+    <button class="run-btn" (click)="onRunSync()" [disabled]="isRunning">
+      <i [ngClass]="isRunning ? 'pi pi-spin pi-spinner' : 'pi pi-play'"></i>
+      {{ isRunning ? 'Running...' : 'Run ' + report.name }}
+    </button>
+  </div>
+
+</div>

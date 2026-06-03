@@ -91,7 +91,8 @@ export interface PipelineStep {
   label: string;
   desc:  string;
   time:  string;
-  state: 'complete' | 'active' | 'pending';
+  icon:  string;
+  state: 'completed' | 'progress' | 'pending' | 'error';
 }
 
 // ─── Phase 2: Quota / Health ──────────────────────────────────────────────────
@@ -126,15 +127,15 @@ export interface SystemHealth {
 
 // ─── Pipeline Definitions ─────────────────────────────────────────────────────
 
-const PIPELINE_DEFS: { stage: SyncStage; label: string; desc: string }[] = [
-  { stage: SyncStage.REQUESTING_REPORT,  label: 'REQUEST',  desc: 'Amazon createReport call'  },
-  { stage: SyncStage.REPORT_IN_QUEUE,    label: 'QUEUE',    desc: 'Waiting in SP-API queue'    },
-  { stage: SyncStage.REPORT_IN_PROGRESS, label: 'PROGRESS', desc: 'Amazon generating data'     },
-  { stage: SyncStage.FETCHING_DOCUMENT,  label: 'METADATA', desc: 'Fetching document info'     },
-  { stage: SyncStage.DOWNLOADING_REPORT, label: 'DOWNLOAD', desc: 'Streaming from S3'          },
-  { stage: SyncStage.PARSING_REPORT,     label: 'PARSE',    desc: 'Gunzip & JSON parse'        },
-  { stage: SyncStage.UPSERTING_DATABASE, label: 'UPSERT',   desc: 'Bulk database write'        },
-  { stage: SyncStage.COMPLETED,          label: 'DONE',     desc: 'Sync cycle finished'        },
+const PIPELINE_DEFS: { stage: SyncStage; label: string; desc: string; icon: string }[] = [
+  { stage: SyncStage.REQUESTING_REPORT,  label: 'REQUEST',  desc: 'Amazon createReport call', icon: 'pi pi-send' },
+  { stage: SyncStage.REPORT_IN_QUEUE,    label: 'QUEUE',    desc: 'Waiting in SP-API queue', icon: 'pi pi-list' },
+  { stage: SyncStage.REPORT_IN_PROGRESS, label: 'PROGRESS', desc: 'Amazon generating data', icon: 'pi pi-refresh' },
+  { stage: SyncStage.FETCHING_DOCUMENT,  label: 'METADATA', desc: 'Fetching document info', icon: 'pi pi-tag' },
+  { stage: SyncStage.DOWNLOADING_REPORT, label: 'DOWNLOAD', desc: 'Streaming from S3', icon: 'pi pi-download' },
+  { stage: SyncStage.PARSING_REPORT,     label: 'PARSE',    desc: 'Gunzip & JSON parse', icon: 'pi pi-file' },
+  { stage: SyncStage.UPSERTING_DATABASE, label: 'UPSERT',   desc: 'Bulk database write', icon: 'pi pi-database' },
+  { stage: SyncStage.COMPLETED,          label: 'DONE',     desc: 'Sync cycle finished', icon: 'pi pi-check-circle' },
 ];
 
 const defaultStatus = (reportType: 'sales' | 'inventory' | 'forecast'): ReportSyncStatus => ({
@@ -275,20 +276,21 @@ export class DashboardService {
     const stageList = PIPELINE_DEFS.map(d => d.stage);
     const currentIdx = stageList.indexOf(status.currentStage);
 
-    return PIPELINE_DEFS.map(({ stage, label, desc }) => {
+    return PIPELINE_DEFS.map(({ stage, label, desc, icon }) => {
       const idx = stageList.indexOf(stage);
       const ts  = status.stageTimestamps?.[stage];
       const time = ts
         ? new Date(ts).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })
         : '--:--:--';
 
-      let state: 'complete' | 'active' | 'pending';
-      if      (status.lastSyncStatus === 'SUCCESS') state = 'complete';
-      else if (status.currentStage === stage)        state = 'active';
+      let state: 'completed' | 'progress' | 'pending' | 'error';
+      if      (status.lastSyncStatus === 'FAILED' && status.currentStage === stage) state = 'error';
+      else if (status.lastSyncStatus === 'SUCCESS') state = 'completed';
+      else if (status.currentStage === stage)       state = 'progress';
       else if (currentIdx === -1 || idx > currentIdx) state = 'pending';
-      else                                            state = 'complete';
+      else                                          state = 'completed';
 
-      return { label, desc, time, state };
+      return { label, desc, time, icon, state };
     });
   }
 

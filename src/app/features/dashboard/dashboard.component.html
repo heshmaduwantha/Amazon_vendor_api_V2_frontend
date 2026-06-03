@@ -4,7 +4,7 @@
 <ng-container *ngIf="health$ | async as health">
 
 <!-- Sync progress bar -->
-<div *ngIf="combined.sales.isSyncing || combined.inventory.isSyncing"
+<div *ngIf="combined.sales.isSyncing"
      class="sync-progress-bar"></div>
 
 <div class="dash">
@@ -36,11 +36,11 @@
         </span>
       </div>
       <div class="sync-badge"
-           [class.badge-syncing]="combined.sales.isSyncing || combined.inventory.isSyncing">
+           [class.badge-syncing]="combined.sales.isSyncing">
         <span class="status-dot"
-              [class.dot-orange]="combined.sales.isSyncing || combined.inventory.isSyncing"
-              [class.dot-green]="!(combined.sales.isSyncing || combined.inventory.isSyncing)"></span>
-        {{ combined.sales.isSyncing || combined.inventory.isSyncing ? 'SYNCING' : 'OPERATIONAL' }}
+              [class.dot-orange]="combined.sales.isSyncing"
+              [class.dot-green]="!combined.sales.isSyncing"></span>
+        {{ combined.sales.isSyncing ? 'SYNCING' : 'OPERATIONAL' }}
       </div>
     </div>
   </div>
@@ -57,7 +57,7 @@
       <div class="kpi-card kpi-units">
         <div class="kpi-lbl">Shipped Units</div>
         <div class="kpi-val">{{ formatNumber(salesTally.totals.shippedUnits) }}</div>
-        <div class="kpi-period">{{ salesTally.rowCount }} week{{ salesTally.rowCount !== 1 ? 's' : '' }} of data</div>
+        <div class="kpi-period">{{ salesTally.rowCount }} row{{ salesTally.rowCount !== 1 ? 's' : '' }} of data</div>
       </div>
       <div class="kpi-card kpi-cogs">
         <div class="kpi-lbl">Shipped COGS</div>
@@ -115,20 +115,20 @@
               <tr *ngFor="let row of salesTally.dailyAggregates">
                 <td class="week-cell">
                   <span class="week-dot"></span>
-                  {{ row.start_date | slice:0:10 }} → {{ row.end_date | slice:0:10 }}
+                  {{ row.startDate | date:'M/d/yyyy' }} &mdash; {{ row.endDate | date:'M/d/yyyy' }} ( Week {{ getAmazonWeekNumber(row.startDate) }} )
                 </td>
-                <td class="right rev">{{ formatCurrency(row.shipped_revenue_amount, 'USD') }}</td>
-                <td class="right">{{ formatNumber(row.shipped_units) }}</td>
-                <td class="right muted">{{ formatCurrency(row.shipped_cogs_amount, 'USD') }}</td>
+                <td class="right rev">{{ formatCurrency(row.shippedRevenueAmount, 'USD') }}</td>
+                <td class="right">{{ formatNumber(row.shippedUnits) }}</td>
+                <td class="right muted">{{ formatCurrency(row.shippedCogsAmount, 'USD') }}</td>
                 <td class="right margin">
-                  {{ grossMarginPct(row.shipped_revenue_amount, row.shipped_cogs_amount) | number:'1.1-1' }}%
+                  {{ grossMarginPct(row.shippedRevenueAmount, row.shippedCogsAmount) | number:'1.1-1' }}%
                 </td>
-                <td class="right ret">{{ formatNumber(row.customer_returns) }}</td>
+                <td class="right ret">{{ formatNumber(row.customerReturns) }}</td>
               </tr>
             </tbody>
             <tfoot>
               <tr class="total-row">
-                <td>TOTAL · {{ salesTally.rowCount }} week{{ salesTally.rowCount !== 1 ? 's' : '' }}</td>
+                <td>TOTAL · {{ salesTally.rowCount }} row{{ salesTally.rowCount !== 1 ? 's' : '' }}</td>
                 <td class="right">{{ formatCurrency(salesTally.totals.shippedRevenue, salesTally.totals.currency) }}</td>
                 <td class="right">{{ formatNumber(salesTally.totals.shippedUnits) }}</td>
                 <td class="right">{{ formatCurrency(salesTally.totals.shippedCogs, salesTally.totals.currency) }}</td>
@@ -175,136 +175,34 @@
     <div class="two-col">
 
       <!-- Sales -->
-      <div class="section-card">
-        <div class="section-head">
-          <div>
-            <div class="section-title">
-              📈 Sales Report
-              <p-tag [severity]="statusSeverity(combined.sales)" [value]="statusLabel(combined.sales)"
-                     styleClass="ml-2 text-xs font-mono"></p-tag>
-            </div>
-            <div class="section-sub">Cron: Wed 02:00 UTC · GET_VENDOR_SALES_REPORT</div>
-          </div>
-          <p-progressSpinner *ngIf="combined.sales.isSyncing"
-                             styleClass="w-1rem h-1rem" strokeWidth="8" fill="transparent" animationDuration=".5s">
-          </p-progressSpinner>
-        </div>
+        <app-sync-timeline
+          [report]="buildSyncReportMeta(combined.sales, 'SALES REPORT', 'CRM / VENDOR / SALES_REPORT')"
+          [stages]="salesPipeline"
+          [periodStart]="salesSyncStart"
+          (periodStartChange)="salesSyncStart = $event"
+          [periodEnd]="salesSyncEnd"
+          (periodEndChange)="salesSyncEnd = $event"
+          [isRunning]="isSalesRequesting || combined.sales.isSyncing"
+          (runSync)="onSyncSalesNow()">
+        </app-sync-timeline>
 
-        <div class="pipeline-stats">
-          <div class="pstat"><div class="pstat-lbl">Last Sync</div><div class="pstat-val">{{ formatLastRun(combined.sales.lastSyncFinishedAt) }}</div></div>
-          <div class="pstat"><div class="pstat-lbl">Next Run</div><div class="pstat-val orange">{{ formatNextRun(combined.sales.nextScheduledAt) }}</div></div>
-          <div class="pstat"><div class="pstat-lbl">Stage</div><div class="pstat-val" [class.orange]="combined.sales.isSyncing">{{ combined.sales.currentStage }}</div></div>
-        </div>
-
-        <div class="period-chip" *ngIf="combined.sales.lastSyncPeriod">
-          Period: {{ combined.sales.lastSyncPeriod.startDate | slice:0:10 }} → {{ combined.sales.lastSyncPeriod.endDate | slice:0:10 }}
-        </div>
-
-        <p-message *ngIf="combined.sales.lastError" severity="error" [text]="combined.sales.lastError" styleClass="w-full mb-2"></p-message>
-
-        <p-timeline [value]="salesPipeline" styleClass="customized-timeline">
-          <ng-template pTemplate="marker" let-step>
-            <span class="pipe-marker"
-                  [class.complete]="step.state==='complete'"
-                  [class.active]="step.state==='active' && combined.sales.lastSyncStatus!=='FAILED'"
-                  [class.failed]="step.state==='active' && combined.sales.lastSyncStatus==='FAILED'">
-              <i class="pi" style="font-size:10px"
-                 [ngClass]="{
-                   'pi-check':       step.state==='complete',
-                   'pi-bolt':        step.state==='active' && combined.sales.lastSyncStatus!=='FAILED',
-                   'pi-times':       step.state==='active' && combined.sales.lastSyncStatus==='FAILED',
-                   'pi-circle-fill': step.state==='pending'
-                 }"></i>
-            </span>
-          </ng-template>
-          <ng-template pTemplate="content" let-step>
-            <div class="pipe-step">
-              <span class="pipe-label" [class.pending]="step.state==='pending'">{{ step.label }}</span>
-              <span class="pipe-desc">{{ step.desc }}</span>
-              <span class="pipe-time">{{ step.time }}</span>
-            </div>
-          </ng-template>
-        </p-timeline>
-
-        <div class="sync-panel">
-          <div class="sync-fields">
-            <input type="date" [(ngModel)]="salesSyncStart" [max]="todayStr" class="date-input" />
-            <span class="arrow">→</span>
-            <input type="date" [(ngModel)]="salesSyncEnd" [max]="todayStr" class="date-input" />
-          </div>
-          <div *ngIf="syncDateError(salesSyncStart, salesSyncEnd)" class="date-error">{{ syncDateError(salesSyncStart, salesSyncEnd) }}</div>
-          <button class="btn-sync" (click)="onSyncSalesNow()"
-                  [disabled]="isSalesRequesting || combined.sales.isSyncing || !!syncDateError(salesSyncStart, salesSyncEnd)">
-            {{ isSalesRequesting ? 'Starting…' : '↻ Sync Sales' }}
-          </button>
+      <!-- Inventory panel (Mockup) -->
+      <div class="under-construction-wrapper">
+        <app-sync-timeline
+          [report]="buildSyncReportMeta(combined.inventory, 'INVENTORY REPORT', 'CRM / VENDOR / INVENTORY_REPORT')"
+          [stages]="inventoryPipeline"
+          [periodStart]="todayStr"
+          [periodEnd]="todayStr"
+          [isRunning]="false"
+          (runSync)="null">
+        </app-sync-timeline>
+        <div class="uc-overlay">
+          <i class="pi pi-hammer"></i>
+          <h3>Under Construction</h3>
+          <p>Inventory Sync Pipeline Coming Soon</p>
         </div>
       </div>
 
-      <!-- Inventory -->
-      <div class="section-card">
-        <div class="section-head">
-          <div>
-            <div class="section-title">
-              📦 Inventory Report
-              <p-tag [severity]="statusSeverity(combined.inventory)" [value]="statusLabel(combined.inventory)"
-                     styleClass="ml-2 text-xs font-mono"></p-tag>
-            </div>
-            <div class="section-sub">Cron: Sun 02:00 UTC · GET_VENDOR_INVENTORY_REPORT</div>
-          </div>
-          <p-progressSpinner *ngIf="combined.inventory.isSyncing"
-                             styleClass="w-1rem h-1rem" strokeWidth="8" fill="transparent" animationDuration=".5s">
-          </p-progressSpinner>
-        </div>
-
-        <div class="pipeline-stats">
-          <div class="pstat"><div class="pstat-lbl">Last Sync</div><div class="pstat-val">{{ formatLastRun(combined.inventory.lastSyncFinishedAt) }}</div></div>
-          <div class="pstat"><div class="pstat-lbl">Next Run</div><div class="pstat-val orange">{{ formatNextRun(combined.inventory.nextScheduledAt) }}</div></div>
-          <div class="pstat"><div class="pstat-lbl">Stage</div><div class="pstat-val" [class.orange]="combined.inventory.isSyncing">{{ combined.inventory.currentStage }}</div></div>
-        </div>
-
-        <div class="period-chip" *ngIf="combined.inventory.lastSyncPeriod">
-          Period: {{ combined.inventory.lastSyncPeriod.startDate | slice:0:10 }} → {{ combined.inventory.lastSyncPeriod.endDate | slice:0:10 }}
-        </div>
-
-        <p-message *ngIf="combined.inventory.lastError" severity="error" [text]="combined.inventory.lastError" styleClass="w-full mb-2"></p-message>
-
-        <p-timeline [value]="inventoryPipeline" styleClass="customized-timeline">
-          <ng-template pTemplate="marker" let-step>
-            <span class="pipe-marker"
-                  [class.complete]="step.state==='complete'"
-                  [class.active]="step.state==='active' && combined.inventory.lastSyncStatus!=='FAILED'"
-                  [class.failed]="step.state==='active' && combined.inventory.lastSyncStatus==='FAILED'">
-              <i class="pi" style="font-size:10px"
-                 [ngClass]="{
-                   'pi-check':       step.state==='complete',
-                   'pi-bolt':        step.state==='active' && combined.inventory.lastSyncStatus!=='FAILED',
-                   'pi-times':       step.state==='active' && combined.inventory.lastSyncStatus==='FAILED',
-                   'pi-circle-fill': step.state==='pending'
-                 }"></i>
-            </span>
-          </ng-template>
-          <ng-template pTemplate="content" let-step>
-            <div class="pipe-step">
-              <span class="pipe-label" [class.pending]="step.state==='pending'">{{ step.label }}</span>
-              <span class="pipe-desc">{{ step.desc }}</span>
-              <span class="pipe-time">{{ step.time }}</span>
-            </div>
-          </ng-template>
-        </p-timeline>
-
-        <div class="sync-panel">
-          <div class="sync-fields">
-            <input type="date" [(ngModel)]="inventorySyncStart" [max]="todayStr" class="date-input" />
-            <span class="arrow">→</span>
-            <input type="date" [(ngModel)]="inventorySyncEnd" [max]="todayStr" class="date-input" />
-          </div>
-          <div *ngIf="syncDateError(inventorySyncStart, inventorySyncEnd)" class="date-error">{{ syncDateError(inventorySyncStart, inventorySyncEnd) }}</div>
-          <button class="btn-sync btn-inv" (click)="onSyncInventoryNow()"
-                  [disabled]="isInventoryRequesting || combined.inventory.isSyncing || !!syncDateError(inventorySyncStart, inventorySyncEnd)">
-            {{ isInventoryRequesting ? 'Starting…' : '↻ Sync Inventory' }}
-          </button>
-        </div>
-      </div>
     </div>
 
     <!-- ── API Quota + Rate Limiter ──────────────────────────────────── -->
