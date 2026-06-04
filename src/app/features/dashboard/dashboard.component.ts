@@ -23,6 +23,7 @@ import {
   ForecastSnapshotResult,
 } from '../../data/services/dashboard.service';
 import { SyncTimelineComponent, SyncReportMeta } from './components/sync-timeline/sync-timeline.component';
+import { WeeklyScheduleStatusComponent } from './components/weekly-schedule-status/weekly-schedule-status.component';
 
 @Component({
   selector: 'app-dashboard',
@@ -31,7 +32,8 @@ import { SyncTimelineComponent, SyncReportMeta } from './components/sync-timelin
     CommonModule, FormsModule, DatePipe,
     ChartModule, TimelineModule, ProgressSpinnerModule,
     MessageModule, ButtonModule, ToastModule, TagModule, TooltipModule,
-    SyncTimelineComponent
+    SyncTimelineComponent,
+    WeeklyScheduleStatusComponent,
   ],
   templateUrl: './dashboard.component.html',
   styleUrls:  ['./dashboard.component.scss'],
@@ -47,6 +49,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
   isSalesRequesting     = false;
   isInventoryRequesting = false;
   isForecastRequesting  = false;
+
+  isStoppingSales       = false;
 
   // ── Today ─────────────────────────────────────────────────────────────────
   todayStr = new Date().toISOString().split('T')[0];
@@ -163,7 +167,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
       lastRun,
       nextRun: this.dashboardService.formatNextRun(status.nextScheduledAt),
       duration,
-      errorMessage: status.lastError || undefined
+      errorMessage: status.lastError || undefined,
+      runningPeriod: status.lastSyncPeriod || null,
     };
   }
 
@@ -184,6 +189,28 @@ export class DashboardComponent implements OnInit, OnDestroy {
           : err.error?.message || 'Could not initiate sales sync.';
         this.messageService.add({ severity: err.status === 409 ? 'warn' : 'error', summary: 'Sales Sync', detail });
         this.isSalesRequesting = false;
+      },
+    });
+  }
+
+  onStopSalesNow(): void {
+    this.isStoppingSales = true;
+    this.dashboardService.cancelSalesSync().subscribe({
+      next: (res) => {
+        this.messageService.add({
+          severity: res.cancelled ? 'info' : 'warn',
+          summary: 'Stop Sales Sync',
+          detail: res.message,
+        });
+        this.isStoppingSales = false;
+      },
+      error: (err: any) => {
+        this.messageService.add({
+          severity: 'error',
+          summary: 'Stop Sales Sync',
+          detail: err.error?.message || 'Could not cancel the sync.',
+        });
+        this.isStoppingSales = false;
       },
     });
   }

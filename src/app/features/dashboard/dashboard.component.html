@@ -168,7 +168,7 @@
             </div>
           </ng-container>
           <ng-template #noInv>
-            <div class="inv-no-data">No inventory data for this range · Run an inventory sync first</div>
+            <div class="no-data-warn">⚠ No inventory data for this range — run an inventory sync first.</div>
           </ng-template>
         </div>
       </ng-container>
@@ -183,8 +183,15 @@
       [periodEnd]="salesSyncEnd"
       (periodEndChange)="salesSyncEnd = $event"
       [isRunning]="isSalesRequesting || combined.sales.isSyncing"
-      (runSync)="onSyncSalesNow()">
+      [isStopping]="isStoppingSales"
+      (runSync)="onSyncSalesNow()"
+      (stopSync)="onStopSalesNow()">
     </app-sync-timeline>
+
+    <!-- ── WEEKLY SCHEDULE HEALTH ────────────────────────────────────────── -->
+    <app-weekly-schedule-status
+      [salesStatus]="combined.sales">
+    </app-weekly-schedule-status>
 
     <!-- ── INVENTORY (under construction · slim placeholder) ───────────── -->
     <section class="card soon">

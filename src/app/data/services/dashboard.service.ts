@@ -207,6 +207,22 @@ export class DashboardService {
     return this.http.post(`${environment.apiUrl}/sync/manual/forecast`, { startDate, endDate });
   }
 
+  // ── Cancellation ──────────────────────────────────────────────────────────
+
+  /** POST /sync/cancel/sales — cooperative cancel of an in-flight sales sync. */
+  cancelSalesSync(): Observable<{ cancelled: boolean; message: string }> {
+    return this.http.post<{ cancelled: boolean; message: string }>(
+      `${environment.apiUrl}/sync/cancel/sales`, {},
+    );
+  }
+
+  /** POST /sync/cancel/inventory — cooperative cancel of an in-flight inventory sync. */
+  cancelInventorySync(): Observable<{ cancelled: boolean; message: string }> {
+    return this.http.post<{ cancelled: boolean; message: string }>(
+      `${environment.apiUrl}/sync/cancel/inventory`, {},
+    );
+  }
+
   // ── Phase 3: Data Tally ───────────────────────────────────────────────────
 
   /**

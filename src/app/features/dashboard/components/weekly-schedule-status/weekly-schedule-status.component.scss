@@ -1,0 +1,188 @@
+:host { display: block; }
+
+$green:  #15a06f;
+$green-bg: #eaf8f1;
+$amber:  #c98400;
+$amber-bg: #fbf6ec;
+$red:    #df5350;
+$red-bg: #fdeeed;
+$cyan-ink: #0a7d96;
+
+.wss-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  box-shadow: var(--shadow-card);
+  padding: 20px 22px;
+  border-left: 3px solid var(--border);
+  transition: border-left-color 0.2s ease;
+
+  &.wss-healthy  { border-left-color: $green; }
+  &.wss-warning  { border-left-color: $amber; }
+  &.wss-critical { border-left-color: $red; }
+}
+
+/* ── Header ─────────────────────────────────────────────────────────────── */
+.wss-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.wss-title-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.wss-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: rgba(0, 187, 223, 0.10);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: $cyan-ink;
+}
+
+.wss-title {
+  font-family: 'Archivo', system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: .10em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+
+.wss-sub {
+  font-size: 10.5px;
+  color: var(--muted);
+  margin-top: 2px;
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: .04em;
+}
+
+/* ── Badge ──────────────────────────────────────────────────────────────── */
+.wss-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 11px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  border: 1px solid transparent;
+
+  &.badge-healthy {
+    background: $green-bg;
+    color: $green;
+    border-color: rgba(21, 160, 111, 0.28);
+  }
+  &.badge-warning {
+    background: $amber-bg;
+    color: $amber;
+    border-color: rgba(201, 132, 0, 0.28);
+  }
+  &.badge-critical {
+    background: $red-bg;
+    color: $red;
+    border-color: rgba(223, 83, 80, 0.28);
+  }
+}
+
+.badge-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+/* ── Rows ───────────────────────────────────────────────────────────────── */
+.wss-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.wss-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--border-soft);
+
+  &:last-child { border-bottom: none; }
+}
+
+.wss-lbl {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  flex-shrink: 0;
+}
+
+.wss-val {
+  font-size: 12.5px;
+  color: var(--text);
+  font-weight: 500;
+  text-align: right;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+
+  &.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+  &.val-ok   { color: $green; font-weight: 600; }
+  &.val-warn { color: $amber; font-weight: 600; }
+  &.val-crit { color: $red;   font-weight: 600; }
+}
+
+/* ── Status chip ────────────────────────────────────────────────────────── */
+.wss-status-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: .04em;
+
+  &.chip-ok   { background: $green-bg; color: $green; }
+  &.chip-fail { background: $red-bg;   color: $red; }
+  &.chip-idle { background: var(--panel-2); color: var(--muted); border: 1px solid var(--border); }
+}
+
+/* ── This-week status ───────────────────────────────────────────────────── */
+.week-status {
+  font-size: 12px;
+  font-weight: 600;
+  font-family: 'IBM Plex Sans', system-ui, sans-serif;
+
+  &.ws-ok   { color: $green; }
+  &.ws-fail { color: $red; }
+  &.ws-miss { color: $amber; }
+}
+
+/* ── Responsive ─────────────────────────────────────────────────────────── */
+@media (max-width: 520px) {
+  .wss-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+  .wss-val { text-align: left; justify-content: flex-start; }
+}

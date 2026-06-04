@@ -157,6 +157,30 @@ $color-warning-bg:     #fbf6ec;
   .meta-value.highlight { color: var(--green); }
 }
 
+/* ─── Running Period Banner ─────────────────────────────────────────────── */
+.running-period-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  background: $color-progress-bg;
+  border: 1px solid rgba(0, 187, 223, 0.30);
+  border-radius: 10px;
+  margin-top: 14px;
+
+  i { color: $color-progress-ink; font-size: 14px; flex-shrink: 0; }
+  span {
+    font-size: 13px;
+    color: $color-progress-ink;
+    font-family: 'IBM Plex Sans', system-ui, sans-serif;
+    strong {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 600;
+      color: var(--text);
+    }
+  }
+}
+
 /* ─── Error Banner ─────────────────────────────────────────────────────── */
 .error-banner {
   display: flex;
@@ -166,10 +190,27 @@ $color-warning-bg:     #fbf6ec;
   background: $color-error-bg;
   border: 1px solid rgba(223, 83, 80, 0.25);
   border-radius: 10px;
-  margin-top: 18px;
+  margin-top: 14px;
 
   i { color: $color-error; font-size: 15px; flex-shrink: 0; }
-  span { font-size: 13px; color: $color-error; font-weight: 500; }
+  span { font-size: 13px; color: $color-error; font-weight: 500; flex: 1; }
+}
+
+.error-dismiss {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 6px;
+  color: $color-error;
+  opacity: 0.6;
+  transition: opacity 0.15s, background 0.15s;
+  display: flex;
+  align-items: center;
+
+  i { font-size: 11px; }
+  &:hover { opacity: 1; background: rgba(223, 83, 80, 0.10); }
 }
 
 /* ─── Pipeline ─────────────────────────────────────────────────────────── */
@@ -421,18 +462,26 @@ $color-warning-bg:     #fbf6ec;
 
   .period-input {
     background: #fff;
-    border: 1px solid var(--border);
+    border: 1.5px solid var(--border);
     border-radius: var(--r-sm);
-    padding: 9px 12px;
-    font-size: 12.5px;
+    padding: 10px 14px;
+    font-size: 13.5px;
     color: var(--text);
     font-family: 'JetBrains Mono', monospace;
-    width: 130px;
+    width: 148px;
     cursor: pointer;
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
     outline: none;
+    letter-spacing: 0.03em;
 
     &:focus { border-color: var(--cyan); box-shadow: var(--focus); }
+    &:hover:not(:focus) { border-color: var(--cyan-ink); }
+
+    &::-webkit-calendar-picker-indicator {
+      cursor: pointer;
+      opacity: 0.6;
+      &:hover { opacity: 1; }
+    }
   }
 
   .period-sep { font-size: 12px; color: var(--muted); }
@@ -471,10 +520,51 @@ $color-warning-bg:     #fbf6ec;
   }
 }
 
+.footer-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* Stop / cancel — red outline so it reads as a destructive action without
+   shouting; semantic error color, not the brand. */
+.stop-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 18px;
+  background: #fff;
+  border: 1px solid rgba(223, 83, 80, 0.45);
+  border-radius: var(--r-sm);
+  color: $color-error;
+  font-size: 13.5px;
+  font-weight: 600;
+  font-family: 'IBM Plex Sans', sans-serif;
+  letter-spacing: .02em;
+  cursor: pointer;
+  transition: background 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+
+  i { font-size: 14px; }
+
+  &:hover:not([disabled]) {
+    background: $color-error-bg;
+    box-shadow: 0 8px 18px -10px rgba(223, 83, 80, 0.6);
+    transform: translateY(-1px);
+  }
+  &:active:not([disabled]) { transform: translateY(0); }
+
+  &[disabled] {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+}
+
 /* ─── Responsive ───────────────────────────────────────────────────────── */
 @media (max-width: 640px) {
   .dashboard-card { padding: 16px; }
   .meta-row { grid-template-columns: repeat(2, 1fr); }
-  .card-footer { flex-direction: column; align-items: flex-start; }
-  .run-btn { width: 100%; justify-content: center; }
+  .card-footer { flex-direction: column; align-items: stretch; }
+  .footer-actions { width: 100%; }
+  .run-btn, .stop-btn { flex: 1; justify-content: center; }
 }
