@@ -298,23 +298,25 @@ export class DashboardComponent implements OnInit, OnDestroy {
   trackByGroup(i: number, g: QuotaGroup): string { return g.group; }
 
   initChart(): void {
-    const textColor = '#4b5563';
-    const gridColor = 'rgba(255,255,255,0.04)';
+    // Light-theme telemetry chart — semantic colors kept meaningful:
+    // cyan-ink dashed = Amazon limit, green = our rate (matches mockup).
+    const textColor = '#8298a5';
+    const gridColor = '#e8edf1';
     this.chartData = {
       labels: ['1s','2s','3s','4s','5s','6s','7s','8s','9s','10s'],
       datasets: [
         {
           label: 'Amazon Limit (0.016 req/s)',
           data: Array(10).fill(0.016),
-          fill: false, borderColor: '#6366f1', borderWidth: 1,
-          pointRadius: 0, borderDash: [4,4], tension: 0,
+          fill: false, borderColor: '#0a7d96', borderWidth: 1.5,
+          pointRadius: 0, borderDash: [7,5], tension: 0,
         },
         {
           label: 'Our Rate',
           data: Array(10).fill(0.015),
-          fill: true, borderColor: '#10b981', borderWidth: 2,
-          backgroundColor: 'rgba(16,185,129,0.1)',
-          pointRadius: 2, pointBackgroundColor: '#10b981', tension: 0.4,
+          fill: true, borderColor: '#15a06f', borderWidth: 2.5,
+          backgroundColor: 'rgba(21,160,111,0.10)',
+          pointRadius: 2, pointBackgroundColor: '#15a06f', tension: 0.4,
         },
       ],
     };

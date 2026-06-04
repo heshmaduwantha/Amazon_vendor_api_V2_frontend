@@ -4,87 +4,68 @@
 <ng-container *ngIf="health$ | async as health">
 
 <!-- Sync progress bar -->
-<div *ngIf="combined.sales.isSyncing"
-     class="sync-progress-bar"></div>
+<div *ngIf="combined.sales.isSyncing" class="sync-progress-bar"></div>
 
-<div class="dash">
+<main class="dash">
 
-  <!-- ── Today bar ────────────────────────────────────────────────────── -->
-  <div class="today-bar">
-    <span class="today-label">
-      📅 Today: <strong>{{ todayStr | date:'EEEE, MMMM d, y' }}</strong>
-    </span>
-    <span class="today-note">Future dates are blocked · Amazon SP-API official reference data only</span>
+  <!-- ── Top strip ─────────────────────────────────────────────────────── -->
+  <div class="topstrip">
+    <div class="today">🗓 Today: <strong>{{ todayStr | date:'EEEE, MMMM d, y' }}</strong></div>
+    <div class="note">Future dates are blocked · Amazon SP-API official reference data only</div>
   </div>
 
   <!-- ── Header ───────────────────────────────────────────────────────── -->
-  <div class="dash-header">
+  <div class="head">
     <div>
-      <h1 class="dash-title">Analytics Dashboard</h1>
-      <p class="dash-sub">Amazon Vendor Central · US Marketplace</p>
+      <h2 class="head-title">Amazon API Performance Dashboard</h2>
+      <div class="crumbs">Horizon Group of USA · Amazon Vendor Central · US Marketplace</div>
     </div>
-    <div class="dash-header-right">
-      <div class="api-badge"
-           [class.badge-ok]="health.apiHealth.status === 'OK'"
-           [class.badge-err]="health.apiHealth.status !== 'OK'">
-        <span class="status-dot"
-              [class.dot-green]="health.apiHealth.status === 'OK'"
-              [class.dot-red]="health.apiHealth.status !== 'OK'"></span>
-        <span>SP-API {{ health.apiHealth.status }}</span>
+    <div class="badges">
+      <span class="badge"
+            [class.badge-err]="health.apiHealth.status !== 'OK'">
+        <span class="dot"
+              [class.ok]="health.apiHealth.status === 'OK'"
+              [class.err]="health.apiHealth.status !== 'OK'"></span>
+        SP-API {{ health.apiHealth.status }}
         <span *ngIf="health.apiHealth.total429Errors > 0" class="badge-429">
           {{ health.apiHealth.total429Errors }}× 429
         </span>
-      </div>
-      <div class="sync-badge"
-           [class.badge-syncing]="combined.sales.isSyncing">
-        <span class="status-dot"
-              [class.dot-orange]="combined.sales.isSyncing"
-              [class.dot-green]="!combined.sales.isSyncing"></span>
+      </span>
+      <span class="badge">
+        <span class="dot"
+              [class.op]="!combined.sales.isSyncing"
+              [class.warn]="combined.sales.isSyncing"></span>
         {{ combined.sales.isSyncing ? 'SYNCING' : 'OPERATIONAL' }}
-      </div>
+      </span>
     </div>
   </div>
 
-  <div class="dash-body">
+  <div class="grid">
 
-    <!-- ── KPI Strip ─────────────────────────────────────────────────── -->
-    <div class="kpi-strip" *ngIf="salesTally">
-      <div class="kpi-card kpi-revenue">
-        <div class="kpi-lbl">Shipped Revenue</div>
-        <div class="kpi-val">{{ formatCurrency(salesTally.totals.shippedRevenue, salesTally.totals.currency) }}</div>
-        <div class="kpi-period">{{ salesTally.period.startDate | slice:0:10 }} → {{ salesTally.period.endDate | slice:0:10 }}</div>
-      </div>
-      <div class="kpi-card kpi-units">
-        <div class="kpi-lbl">Shipped Units</div>
-        <div class="kpi-val">{{ formatNumber(salesTally.totals.shippedUnits) }}</div>
-        <div class="kpi-period">{{ salesTally.rowCount }} row{{ salesTally.rowCount !== 1 ? 's' : '' }} of data</div>
-      </div>
-      <div class="kpi-card kpi-cogs">
-        <div class="kpi-lbl">Shipped COGS</div>
-        <div class="kpi-val">{{ formatCurrency(salesTally.totals.shippedCogs, salesTally.totals.currency) }}</div>
-        <div class="kpi-period kpi-margin">
-          Margin {{ grossMarginPct(salesTally.totals.shippedRevenue, salesTally.totals.shippedCogs) | number:'1.1-1' }}%
-        </div>
-      </div>
-    </div>
-
-    <!-- ── Tally Section ─────────────────────────────────────────────── -->
-    <div class="section-card">
-      <div class="section-head">
+    <!-- ── TALLY CARD ──────────────────────────────────────────────────── -->
+    <section class="card">
+      <div class="tally-head">
         <div>
-          <div class="section-title">📊 Week-wise Tally · Compare with Amazon Vendor Central</div>
-          <div class="section-sub">Vendor Central → Analytics → Sales Dashboard → Same date range → Weekly</div>
+          <div class="card-title">
+            <span class="ico">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 3v18h18"/><path d="M7 14l3-3 3 3 4-5"/></svg>
+            </span>
+            Week-wise Tally · Compare with Amazon Vendor Central
+          </div>
+          <div class="card-sub">Vendor Central → Analytics → Sales Dashboard → Weekly</div>
         </div>
-        <div class="tally-controls">
-          <input type="date" [(ngModel)]="tallyStartDate" [max]="todayStr" class="date-input" />
+        <div class="controls">
+          <input type="date" [(ngModel)]="tallyStartDate" [max]="todayStr" class="date" aria-label="Start date" />
           <span class="arrow">→</span>
-          <input type="date" [(ngModel)]="tallyEndDate" [max]="todayStr" class="date-input" />
-          <button class="btn-icon" (click)="onResetTallyDates()" title="Reset to last completed week">↺</button>
-          <button class="btn-primary"
+          <input type="date" [(ngModel)]="tallyEndDate" [max]="todayStr" class="date" aria-label="End date" />
+          <button class="icon-btn" (click)="onResetTallyDates()" title="Reset to last completed week" aria-label="Reset dates">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
+          </button>
+          <button class="btn btn-primary"
                   (click)="onFetchTally()"
                   [disabled]="isFetchingTally || !tallyStartDate || !tallyEndDate || !!syncDateError(tallyStartDate, tallyEndDate)">
-            <span *ngIf="!isFetchingTally">🔍 Fetch Tally</span>
-            <span *ngIf="isFetchingTally">Loading…</span>
+            <svg *ngIf="!isFetchingTally" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            {{ isFetchingTally ? 'Loading…' : 'Fetch Tally' }}
           </button>
         </div>
       </div>
@@ -93,12 +74,34 @@
         {{ syncDateError(tallyStartDate, tallyEndDate) }}
       </div>
       <div *ngIf="tallyError" class="tally-error">⚠ {{ tallyError }}</div>
-      <div *ngIf="!salesTally && !isFetchingTally && !tallyError" class="empty-state">
-        Select a date range and click <strong>Fetch Tally</strong> to compare DB data with Vendor Central.
+      <div *ngIf="!salesTally && !isFetchingTally && !tallyError" class="tally-empty">
+        Select a date range and click <b>Fetch Tally</b> to compare DB data with Vendor Central.
       </div>
-      <div *ngIf="isFetchingTally" class="empty-state">Fetching from Amazon SP-API…</div>
+      <div *ngIf="isFetchingTally" class="tally-empty">Fetching from Amazon SP-API…</div>
 
       <ng-container *ngIf="salesTally">
+
+        <!-- KPI summary strip -->
+        <div class="kpi-strip">
+          <div class="kpi-box">
+            <div class="kpi-lbl">Shipped Revenue</div>
+            <div class="kpi-val">{{ formatCurrency(salesTally.totals.shippedRevenue, salesTally.totals.currency) }}</div>
+            <div class="kpi-period">{{ salesTally.period.startDate | slice:0:10 }} → {{ salesTally.period.endDate | slice:0:10 }}</div>
+          </div>
+          <div class="kpi-box">
+            <div class="kpi-lbl">Shipped Units</div>
+            <div class="kpi-val">{{ formatNumber(salesTally.totals.shippedUnits) }}</div>
+            <div class="kpi-period">{{ salesTally.rowCount }} row{{ salesTally.rowCount !== 1 ? 's' : '' }} of data</div>
+          </div>
+          <div class="kpi-box">
+            <div class="kpi-lbl">Shipped COGS</div>
+            <div class="kpi-val">{{ formatCurrency(salesTally.totals.shippedCogs, salesTally.totals.currency) }}</div>
+            <div class="kpi-period kpi-margin">
+              Margin {{ grossMarginPct(salesTally.totals.shippedRevenue, salesTally.totals.shippedCogs) | number:'1.1-1' }}%
+            </div>
+          </div>
+        </div>
+
         <div *ngIf="salesTally.dailyAggregates?.length; else noWeekData" class="table-wrap">
           <table class="week-table">
             <thead>
@@ -169,54 +172,64 @@
           </ng-template>
         </div>
       </ng-container>
-    </div>
+    </section>
 
-    <!-- ── Pipeline + Manual Sync (2 col) ───────────────────────────── -->
-    <div class="two-col">
+    <!-- ── SALES REPORT CARD (real pipeline + run) ─────────────────────── -->
+    <app-sync-timeline
+      [report]="buildSyncReportMeta(combined.sales, 'SALES REPORT', 'CRM / VENDOR / SALES_REPORT')"
+      [stages]="salesPipeline"
+      [periodStart]="salesSyncStart"
+      (periodStartChange)="salesSyncStart = $event"
+      [periodEnd]="salesSyncEnd"
+      (periodEndChange)="salesSyncEnd = $event"
+      [isRunning]="isSalesRequesting || combined.sales.isSyncing"
+      (runSync)="onSyncSalesNow()">
+    </app-sync-timeline>
 
-      <!-- Sales -->
-        <app-sync-timeline
-          [report]="buildSyncReportMeta(combined.sales, 'SALES REPORT', 'CRM / VENDOR / SALES_REPORT')"
-          [stages]="salesPipeline"
-          [periodStart]="salesSyncStart"
-          (periodStartChange)="salesSyncStart = $event"
-          [periodEnd]="salesSyncEnd"
-          (periodEndChange)="salesSyncEnd = $event"
-          [isRunning]="isSalesRequesting || combined.sales.isSyncing"
-          (runSync)="onSyncSalesNow()">
-        </app-sync-timeline>
-
-      <!-- Inventory panel (Mockup) -->
-      <div class="under-construction-wrapper">
-        <app-sync-timeline
-          [report]="buildSyncReportMeta(combined.inventory, 'INVENTORY REPORT', 'CRM / VENDOR / INVENTORY_REPORT')"
-          [stages]="inventoryPipeline"
-          [periodStart]="todayStr"
-          [periodEnd]="todayStr"
-          [isRunning]="false"
-          (runSync)="null">
-        </app-sync-timeline>
-        <div class="uc-overlay">
-          <i class="pi pi-hammer"></i>
-          <h3>Under Construction</h3>
-          <p>Inventory Sync Pipeline Coming Soon</p>
+    <!-- ── INVENTORY (under construction · slim placeholder) ───────────── -->
+    <section class="card soon">
+      <div class="card-row">
+        <div>
+          <div class="card-title">
+            <span class="ico">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 7v10l9 4 9-4V7"/><path d="M12 11v10"/></svg>
+            </span>
+            Inventory Report
+          </div>
+          <div class="card-sub">CRM / Vendor / Inventory_Report</div>
         </div>
+        <span class="pill soon">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+          UNDER CONSTRUCTION
+        </span>
       </div>
 
-    </div>
+      <div class="notice">
+        <span class="nico">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 21h18"/><path d="M5 21V10l7-5 7 5v11"/><path d="M9 21v-6h6v6"/></svg>
+        </span>
+        <div><b>Inventory sync is under construction</b> — going live next week. The full report &amp; pipeline will appear here once it's ready.</div>
+      </div>
+    </section>
 
-    <!-- ── API Quota + Rate Limiter ──────────────────────────────────── -->
-    <div class="two-col">
-      <div class="section-card">
-        <div class="section-head">
-          <div class="section-title">🛡️ API Quota Health</div>
-          <span class="section-sub">Polls every 15s</span>
+    <!-- ── BOTTOM ROW: Quota + Telemetry ───────────────────────────────── -->
+    <div class="row2">
+
+      <section class="card">
+        <div class="card-row">
+          <div class="card-title sm">
+            <span class="ico">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            </span>
+            API Quota Health
+          </div>
+          <span class="poll">Polls every 15s</span>
         </div>
-        <div class="quota-limits">
-          <div class="ql-row"><span>createReport</span><span class="orange">{{ health.rateLimiters.createReport }}</span></div>
-          <div class="ql-row"><span>getReport (poll)</span><span class="blue">{{ health.rateLimiters.getReport }}</span></div>
-          <div class="ql-row"><span>getReportDocument</span><span class="orange">{{ health.rateLimiters.getReportDocument }}</span></div>
-          <div class="ql-row"><span>Concurrency</span><span class="green">{{ health.rateLimiters.concurrency }}</span></div>
+        <div class="quota-list">
+          <div class="quota-row"><span class="name">createReport</span><span class="val v-warn">{{ health.rateLimiters.createReport }}</span></div>
+          <div class="quota-row"><span class="name">getReport (poll)</span><span class="val v-cyan">{{ health.rateLimiters.getReport }}</span></div>
+          <div class="quota-row"><span class="name">getReportDocument</span><span class="val v-warn">{{ health.rateLimiters.getReportDocument }}</span></div>
+          <div class="quota-row"><span class="name">Concurrency</span><span class="val v-green">{{ health.rateLimiters.concurrency }}</span></div>
         </div>
         <div *ngFor="let g of health.quotaGroups; trackBy: trackByGroup"
              class="quota-group"
@@ -234,17 +247,22 @@
           </div>
           <p-tag [severity]="quotaSeverity(g)" [value]="quotaLabel(g)" styleClass="text-xs font-mono"></p-tag>
         </div>
-        <div *ngIf="!health.quotaGroups?.length" class="empty-state">
+        <div *ngIf="!health.quotaGroups?.length" class="tally-empty">
           No API calls yet — quota data appears after first sync.
         </div>
-      </div>
+      </section>
 
-      <div class="section-card">
-        <div class="section-head">
-          <div class="section-title">📡 Rate Limiter Telemetry</div>
-          <div style="display:flex;gap:6px">
-            <span class="tag-chip tag-red">429 Guard: ON</span>
-            <span class="tag-chip tag-green">Bottleneck: ON</span>
+      <section class="card">
+        <div class="card-row">
+          <div class="card-title sm">
+            <span class="ico">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 3v18h18"/><path d="M7 13l3 3 4-6 4 4"/></svg>
+            </span>
+            Rate Limiter Telemetry
+          </div>
+          <div class="tele-flags">
+            <span class="flag guard">429 GUARD: ON</span>
+            <span class="flag bottle">BOTTLENECK: ON</span>
           </div>
         </div>
         <div class="chart-container">
@@ -256,11 +274,11 @@
           ✅ Retry-After respected &nbsp;|&nbsp;
           ✅ Dynamic throttle via x-amzn-ratelimit-limit
         </div>
-      </div>
+      </section>
     </div>
 
   </div>
-</div>
+</main>
 
 </ng-container>
 </ng-container>
