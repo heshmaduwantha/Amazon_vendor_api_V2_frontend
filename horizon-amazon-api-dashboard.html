@@ -1,0 +1,576 @@
+<!-- Horizon Group of USA — Amazon API Performance Dashboard (light content / dark sidebar) -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Horizon Group of USA — Amazon API Performance Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    /* Horizon brand (sidebar stays dark) */
+    --navy-900:#04212f;
+    --navy-800:#062a3e;
+    --navy-700:#072f49;       /* logo band navy */
+    --navy-600:#0a3a57;
+    --cyan:#00bbdf;           /* brand accent (from logo) */
+    --cyan-bright:#3dd6f2;
+    --cyan-ink:#0a7d96;       /* darkened cyan for text/links on light */
+    --teal-dark:#0b819b;
+
+    /* LIGHT dashboard surface */
+    --bg:#ffffff;             /* dashboard space — white (as requested) */
+    --panel:#f2f6f9;          /* component cards — soft off-white grey */
+    --panel-2:#ffffff;        /* nested boxes — white, sits inside cards for depth */
+    --border:#e1e9ef;         /* soft grey border */
+    --border-soft:#edf1f5;
+    --grid:#e8edf1;           /* chart gridlines */
+
+    /* ink */
+    --text:#16323f;           /* soft dark navy text (not harsh black) */
+    --text-dim:#4d6878;
+    --muted:#8298a5;
+
+    /* semantic status — kept meaningful, darkened only for light-bg legibility */
+    --green:#15a06f;
+    --green-soft:#eaf8f1;
+    --green-line:#2bbd86;
+    --amber:#c98400;
+    --red:#df5350;
+
+    --r:16px; --r-sm:10px;
+    --shadow:0 10px 28px -16px rgba(20,50,70,.28);
+    --shadow-card:0 1px 2px rgba(20,50,70,.05), 0 8px 24px -18px rgba(20,50,70,.35);
+    --focus:0 0 0 3px rgba(0,187,223,.25);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    background:
+      radial-gradient(1100px 520px at 82% -12%, rgba(0,187,223,.06), transparent 60%),
+      radial-gradient(900px 600px at -6% 112%, rgba(11,129,155,.05), transparent 55%),
+      var(--bg);
+    color:var(--text);
+    font-family:"IBM Plex Sans",system-ui,sans-serif;
+    font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;
+  }
+  .app{display:grid;grid-template-columns:248px 1fr;min-height:100vh}
+
+  /* ---------- SIDEBAR (dark, unchanged brand anchor) ---------- */
+  .side{
+    background:linear-gradient(180deg,var(--navy-700),var(--navy-800));
+    border-right:1px solid rgba(0,187,223,.12);
+    padding:22px 16px;display:flex;flex-direction:column;gap:26px;
+    position:sticky;top:0;height:100vh;color:#eaf6fa;
+  }
+  .brand{display:flex;align-items:center;gap:12px;padding:4px 6px}
+  .brand h1{font-family:"Archivo";font-weight:800;font-size:15px;letter-spacing:.2px;margin:0;line-height:1.05;color:#fff}
+  .brand .sub{font-size:10.5px;color:var(--cyan);letter-spacing:.16em;text-transform:uppercase;font-weight:600;margin-top:2px}
+  .nav-label{font-size:10px;letter-spacing:.22em;color:#6f93a4;text-transform:uppercase;padding:0 10px;font-weight:600}
+  nav{display:flex;flex-direction:column;gap:4px;margin-top:-12px}
+  .nav-item{display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:var(--r-sm);color:#a9c6d4;text-decoration:none;font-weight:500;font-size:13.5px;border:1px solid transparent;transition:.18s}
+  .nav-item:hover{background:rgba(0,187,223,.08);color:#fff}
+  .nav-item.active{background:linear-gradient(90deg,rgba(0,187,223,.20),rgba(0,187,223,.05));color:#fff;border-color:rgba(0,187,223,.18);box-shadow:inset 3px 0 0 var(--cyan)}
+  .side-foot{margin-top:auto;font-size:11px;color:#6f93a4;border-top:1px solid rgba(255,255,255,.06);padding-top:14px}
+  .side-foot b{color:#a9c6d4;font-weight:600}
+
+  /* ---------- MAIN (light) ---------- */
+  main{padding:0 0 60px}
+  .topstrip{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:11px 30px;font-size:12px;color:var(--text-dim);
+    border-bottom:1px solid var(--border);background:#fbfdfe;
+  }
+  .topstrip .today b{color:var(--text)}
+  .topstrip .note{color:var(--muted);font-size:11px}
+
+  .head{padding:26px 30px 8px;display:flex;align-items:flex-start;justify-content:space-between;gap:20px;flex-wrap:wrap}
+  .head h2{font-family:"Archivo";font-weight:800;font-size:26px;margin:0;letter-spacing:-.4px;color:var(--text)}
+  .head .crumbs{color:var(--cyan-ink);font-size:13px;margin-top:6px;font-weight:600}
+  .badges{display:flex;gap:10px}
+  .badge{display:inline-flex;align-items:center;gap:8px;padding:8px 13px;border-radius:999px;font-size:11.5px;font-weight:600;letter-spacing:.04em;border:1px solid var(--border);background:#fff;color:var(--text-dim);box-shadow:var(--shadow-card)}
+  .dot{width:8px;height:8px;border-radius:50%;animation:pulse 2.4s infinite}
+  .dot.ok{background:var(--green);color:var(--green)}
+  .dot.op{background:var(--cyan);color:var(--cyan)}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(21,160,111,.45)}70%{box-shadow:0 0 0 7px rgba(21,160,111,0)}100%{box-shadow:0 0 0 0 rgba(21,160,111,0)}}
+
+  .grid{padding:18px 30px;display:flex;flex-direction:column;gap:20px}
+  .card{
+    background:var(--panel);
+    border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow-card);
+    padding:24px;opacity:0;transform:translateY(10px);
+    animation:rise .55s cubic-bezier(.2,.7,.3,1) forwards;
+  }
+  @keyframes rise{to{opacity:1;transform:none}}
+  .card:nth-child(1){animation-delay:.05s}
+  .card:nth-child(2){animation-delay:.13s}
+  .row2{display:grid;grid-template-columns:1fr 1.15fr;gap:20px}
+  .row2 .card{animation-delay:.21s}
+
+  .card-title{display:flex;align-items:center;gap:10px;font-family:"Archivo";font-weight:700;font-size:14px;letter-spacing:.12em;text-transform:uppercase;color:var(--text)}
+  .card-title .ico{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;background:rgba(0,187,223,.10);border:1px solid var(--border);color:var(--cyan-ink)}
+  .card-sub{color:var(--muted);font-size:11px;letter-spacing:.18em;text-transform:uppercase;margin:4px 0 0 44px;font-family:"JetBrains Mono"}
+
+  /* tally */
+  .tally-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap}
+  .controls{display:flex;align-items:center;gap:8px}
+  .date{background:#fff;border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:var(--r-sm);font-family:"JetBrains Mono";font-size:12.5px}
+  .date::placeholder{color:var(--muted)}
+  .date:focus{outline:none;border-color:var(--cyan);box-shadow:var(--focus)}
+  .arrow{color:var(--muted)}
+  .icon-btn{background:#fff;border:1px solid var(--border);color:var(--text-dim);width:38px;height:38px;border-radius:var(--r-sm);cursor:pointer;display:grid;place-items:center;transition:.18s}
+  .icon-btn:hover{color:var(--cyan-ink);border-color:var(--cyan)}
+  .btn{border:none;cursor:pointer;border-radius:var(--r-sm);font-weight:600;font-family:"IBM Plex Sans";display:inline-flex;align-items:center;gap:9px;padding:10px 18px;font-size:13.5px;transition:.18s}
+  .btn-primary{background:linear-gradient(135deg,var(--cyan),var(--teal-dark));color:#fff;box-shadow:0 8px 20px -10px rgba(0,150,180,.7)}
+  .btn-primary:hover{transform:translateY(-1px);box-shadow:0 12px 26px -10px rgba(0,150,180,.85)}
+  .tally-empty{margin-top:18px;border:1px dashed var(--border);border-radius:12px;background:var(--panel-2);padding:30px;text-align:center;color:var(--muted);font-size:13px}
+  .tally-empty b{color:var(--text-dim)}
+
+  /* report meta */
+  .pill{display:inline-flex;align-items:center;gap:7px;padding:7px 13px;border-radius:999px;font-size:11.5px;font-weight:600;letter-spacing:.05em}
+  .pill.done{background:var(--green-soft);color:var(--green);border:1px solid rgba(21,160,111,.30)}
+  .meta{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:22px 0 6px;background:var(--panel-2);border:1px solid var(--border-soft);border-radius:12px;padding:16px 18px}
+  .meta .k{font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted)}
+  .meta .v{font-family:"JetBrains Mono";font-size:13px;margin-top:5px;color:var(--text)}
+  .meta .v.green{color:var(--green)}
+
+  /* pipeline */
+  .pipe{display:flex;align-items:flex-start;justify-content:space-between;gap:4px;margin:26px 4px 8px;position:relative}
+  .step{flex:1;display:flex;flex-direction:column;align-items:center;text-align:center;gap:9px;position:relative}
+  .step .node{width:58px;height:58px;border-radius:15px;display:grid;place-items:center;background:var(--green-soft);border:1.5px solid var(--green-line);color:var(--green);z-index:2;box-shadow:0 4px 12px -6px rgba(21,160,111,.35)}
+  .step .lbl{font-family:"Archivo";font-weight:700;font-size:11px;letter-spacing:.1em;color:var(--text)}
+  .step .desc{font-size:10px;color:var(--muted);max-width:96px;line-height:1.35}
+  .step .ts{font-family:"JetBrains Mono";font-size:10px;color:var(--text-dim);background:#fff;border:1px solid var(--border);padding:3px 7px;border-radius:6px}
+  .connector{position:absolute;top:29px;left:calc(-50% + 29px);width:calc(100% - 58px);height:2px;background:var(--green-line);z-index:1}
+  .step:first-child .connector{display:none}
+
+  .runbar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:24px;padding-top:20px;border-top:1px solid var(--border-soft);flex-wrap:wrap}
+  .runbar .lab{font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted)}
+
+  /* ---- under-construction (Inventory, coming next week) ---- */
+  .pill.soon{background:rgba(201,132,0,.10);color:var(--amber);border:1px solid rgba(201,132,0,.30)}
+  .card.soon .card-title .ico{background:rgba(201,132,0,.10);color:var(--amber)}
+  .notice{
+    display:flex;align-items:center;gap:13px;margin:20px 0 4px;padding:14px 18px;
+    background:repeating-linear-gradient(45deg,#fbf6ec,#fbf6ec 12px,#f8f0df 12px,#f8f0df 24px);
+    border:1px solid rgba(201,132,0,.28);border-radius:12px;color:#8a6313;font-size:13px;
+  }
+  .notice .nico{flex:0 0 auto;width:34px;height:34px;border-radius:9px;display:grid;place-items:center;background:rgba(201,132,0,.14);color:var(--amber)}
+  .notice b{color:#6f4f0e}
+  /* pending pipeline = NOT run yet (neutral grey, honest signal) */
+  .step .node.pending{background:#f3f6f8;border:1.5px dashed #c5d2da;color:#9fb1bc;box-shadow:none}
+  .connector.pending{background:repeating-linear-gradient(90deg,#cfdae1,#cfdae1 5px,transparent 5px,transparent 10px)}
+  .ts.pending{color:var(--muted);background:#f3f6f8;border-style:dashed}
+  .btn[disabled]{cursor:not-allowed;background:#e6edf1;color:#9fb1bc;box-shadow:none}
+  .btn[disabled]:hover{transform:none}
+  .date[disabled]{background:#f3f6f8;color:#9fb1bc;cursor:not-allowed}
+
+  /* quota */
+  .quota-row{display:flex;align-items:center;justify-content:space-between;padding:13px 4px;border-bottom:1px solid var(--border-soft);font-size:13px}
+  .quota-row:last-child{border-bottom:none}
+  .quota-row .name{color:var(--text-dim);font-family:"JetBrains Mono";font-size:12.5px}
+  .quota-row .val{font-family:"JetBrains Mono";font-weight:600;font-size:12.5px}
+  .v-warn{color:var(--amber)}.v-cyan{color:var(--cyan-ink)}.v-green{color:var(--green)}
+  .poll{font-size:10.5px;color:var(--muted);font-family:"JetBrains Mono"}
+
+  /* telemetry */
+  .tele-flags{display:flex;gap:8px}
+  .flag{font-family:"JetBrains Mono";font-size:10px;font-weight:600;padding:5px 9px;border-radius:6px;letter-spacing:.05em}
+  .flag.guard{background:rgba(223,83,80,.10);color:var(--red);border:1px solid rgba(223,83,80,.30)}
+  .flag.bottle{background:var(--green-soft);color:var(--green);border:1px solid rgba(21,160,111,.30)}
+  .legend{display:flex;gap:18px;font-size:11px;color:var(--text-dim);margin:14px 0 4px}
+  .legend i{display:inline-block;width:22px;height:0;vertical-align:middle;margin-right:7px}
+  .leg-limit i{border-top:2px dashed var(--cyan-ink)}
+  .leg-rate i{border-top:3px solid var(--green)}
+
+  /* ---- Business Analytics · Power BI ---- */
+  .pbi-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap}
+  .pbi-status{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .pbi-badge{display:inline-flex;align-items:center;gap:7px;background:#fff;border:1px solid var(--border);border-radius:8px;padding:6px 11px;font-size:11.5px;font-weight:600;color:var(--text-dim)}
+  .refreshed{font-size:11px;color:var(--muted);font-family:"JetBrains Mono"}
+  .live{display:inline-flex;align-items:center;gap:7px;background:var(--green-soft);border:1px solid rgba(21,160,111,.30);color:var(--green);border-radius:999px;padding:6px 12px;font-size:11px;font-weight:600;letter-spacing:.04em}
+  .btn-ghost{background:#fff;border:1px solid var(--border);color:var(--text-dim);border-radius:var(--r-sm);padding:8px 13px;font-size:12.5px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:8px;transition:.18s}
+  .btn-ghost:hover{border-color:var(--cyan);color:var(--cyan-ink)}
+
+  .kpi-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin:20px 0 4px}
+  .kpi{background:#fff;border:1px solid var(--border);border-radius:12px;padding:15px}
+  .kpi .label{font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;justify-content:space-between;gap:6px;min-height:14px}
+  .kpi .num{font-family:"Archivo";font-weight:800;font-size:21px;margin:10px 0 6px;letter-spacing:-.3px;color:var(--text)}
+  .kpi .delta{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;font-family:"JetBrains Mono"}
+  .kpi .delta.up{color:var(--green)}
+  .kpi .delta.down{color:var(--red)}
+  .kpi .delta .vs{color:var(--muted);font-weight:400}
+  .kpi.north{border-color:rgba(0,187,223,.45);box-shadow:0 0 0 1px rgba(0,187,223,.10)}
+  .kpi .star{font-size:8px;color:var(--cyan-ink);border:1px solid rgba(0,187,223,.35);border-radius:5px;padding:1px 5px;letter-spacing:.06em;font-weight:700}
+
+  .embed{margin-top:18px;border:1px solid var(--border);border-radius:14px;overflow:hidden;background:#fff}
+  .embed-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 14px;border-bottom:1px solid var(--border-soft);background:#fbfdfe;flex-wrap:wrap}
+  .embed-bar .rname{display:flex;align-items:center;gap:9px;font-weight:600;font-size:13px;color:var(--text)}
+  .tabs{display:flex;gap:4px;flex-wrap:wrap}
+  .tab{font-size:11.5px;color:var(--text-dim);padding:5px 10px;border-radius:7px;cursor:pointer}
+  .tab.on{background:rgba(0,187,223,.10);color:var(--cyan-ink);font-weight:600}
+  .embed-icons{display:flex;gap:6px;color:var(--muted)}
+  .embed-icons span{width:30px;height:30px;border-radius:7px;display:grid;place-items:center;border:1px solid var(--border);cursor:pointer}
+  .embed-icons span:hover{border-color:var(--cyan);color:var(--cyan-ink)}
+  .embed-body{display:grid;grid-template-columns:188px 1fr;min-height:300px}
+  .slicers{border-right:1px solid var(--border-soft);padding:16px 14px;background:#fafcfd;display:flex;flex-direction:column;gap:16px}
+  .slicer .st{font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+  .chip{display:inline-block;background:#fff;border:1px solid var(--border);border-radius:7px;padding:6px 10px;font-size:12px;color:var(--text-dim);margin:0 4px 5px 0}
+  .chip.sel{background:rgba(0,187,223,.10);border-color:rgba(0,187,223,.4);color:var(--cyan-ink);font-weight:600}
+  .viz{padding:16px 18px;display:flex;flex-direction:column}
+  .viz-title{font-size:12.5px;font-weight:600;color:var(--text);margin-bottom:2px}
+  .viz-sub{font-size:11px;color:var(--muted);margin-bottom:6px}
+  .viz-legend{display:flex;gap:16px;font-size:11px;color:var(--text-dim);margin:2px 0 4px}
+  .viz-legend i{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-2px;margin-right:6px}
+  .embed-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 14px;border-top:1px solid var(--border-soft);background:#fbfdfe;font-size:10.5px;color:var(--muted);font-family:"JetBrains Mono";flex-wrap:wrap}
+
+  @media(max-width:980px){
+    .app{grid-template-columns:1fr}
+    .side{position:relative;height:auto;flex-direction:row;align-items:center;flex-wrap:wrap}
+    .side-foot{display:none}
+    .row2{grid-template-columns:1fr}
+    .meta{grid-template-columns:repeat(2,1fr)}
+    .pipe{flex-wrap:wrap;gap:18px}.step{flex:0 0 22%}.connector{display:none}
+    .kpi-grid{grid-template-columns:repeat(2,1fr)}
+    .embed-body{grid-template-columns:1fr}
+    .slicers{flex-direction:row;flex-wrap:wrap;border-right:none;border-bottom:1px solid var(--border-soft)}
+  }
+</style>
+
+<div class="app">
+  <!-- ============ SIDEBAR ============ -->
+  <aside class="side">
+    <div class="brand">
+      <div class="mark">
+        <svg width="38" height="38" viewBox="0 0 48 48" fill="none">
+          <rect x="1" y="1" width="46" height="46" rx="11" fill="#072f49" stroke="#00bbdf" stroke-opacity=".4"/>
+          <path d="M15 14v20M33 14v20" stroke="#00bbdf" stroke-width="4.5" stroke-linecap="round"/>
+          <path d="M15 24h18" stroke="#3dd6f2" stroke-width="4.5" stroke-linecap="round"/>
+          <circle cx="33" cy="14" r="4" fill="#3dd6f2"/>
+        </svg>
+      </div>
+      <div>
+        <h1>HORIZON<br>GROUP USA</h1>
+        <div class="sub">Amazon API</div>
+      </div>
+    </div>
+
+    <span class="nav-label">Main</span>
+    <nav>
+      <a class="nav-item active" href="#">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9.5 12 3l9 6.5V21a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/></svg>
+        Dashboard
+      </a>
+      <a class="nav-item" href="#">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.14.31.22.65.2 1z"/></svg>
+        Settings
+      </a>
+    </nav>
+
+    <div class="side-foot">
+      <div><b>v3.0</b> · US Marketplace</div>
+      <div style="margin-top:4px">SP-API official reference</div>
+    </div>
+  </aside>
+
+  <!-- ============ MAIN ============ -->
+  <main>
+    <div class="topstrip">
+      <div class="today">🗓 Today: <b>Wednesday, June 3, 2026</b></div>
+      <div class="note">Future dates are blocked · Amazon SP-API official reference data only</div>
+    </div>
+
+    <div class="head">
+      <div>
+        <h2>Amazon API Performance Dashboard</h2>
+        <div class="crumbs">Horizon Group of USA · Amazon Vendor Central · US Marketplace</div>
+      </div>
+      <div class="badges">
+        <span class="badge"><span class="dot ok"></span>SP-API OK</span>
+        <span class="badge"><span class="dot op"></span>OPERATIONAL</span>
+      </div>
+    </div>
+
+    <div class="grid">
+
+      <!-- TALLY -->
+      <section class="card">
+        <div class="tally-head">
+          <div>
+            <div class="card-title"><span class="ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l3-3 3 3 4-5"/></svg></span>Week-wise Tally · Compare with Amazon Vendor Central</div>
+            <div class="card-sub">Vendor Central → Analytics → Sales Dashboard → Weekly</div>
+          </div>
+          <div class="controls">
+            <input class="date" type="text" value="05/25/2026" aria-label="Start date">
+            <span class="arrow">→</span>
+            <input class="date" type="text" value="05/31/2026" aria-label="End date">
+            <button class="icon-btn" title="Reset"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg></button>
+            <button class="btn btn-primary"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 6l6 6-6 6"/></svg>Fetch Tally</button>
+          </div>
+        </div>
+        <div class="tally-empty">Select a date range and click <b>Fetch Tally</b> to compare DB data with Vendor Central.</div>
+      </section>
+
+      <!-- SALES REPORT -->
+      <section class="card">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap">
+          <div>
+            <div class="card-title"><span class="ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/></svg></span>Sales Report</div>
+            <div class="card-sub">CRM / Vendor / Sales_Report</div>
+          </div>
+          <span class="pill done"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg>COMPLETED</span>
+        </div>
+
+        <div class="meta">
+          <div><div class="k">Last Run</div><div class="v">Jun 3 · 12:15</div></div>
+          <div><div class="k">Next Run</div><div class="v">Tue, Jun 9 · 22:00 UTC</div></div>
+          <div><div class="k">Duration</div><div class="v">1m 7s</div></div>
+          <div><div class="k">Status</div><div class="v green">COMPLETED</div></div>
+        </div>
+
+        <div class="pipe" id="pipe"></div>
+
+        <div class="runbar">
+          <div class="controls">
+            <span class="lab" style="margin-right:6px">Period</span>
+            <input class="date" type="text" placeholder="mm/dd/yyyy" aria-label="Period start">
+            <span class="arrow">→</span>
+            <input class="date" type="text" placeholder="mm/dd/yyyy" aria-label="Period end">
+          </div>
+          <button class="btn btn-primary" style="padding:11px 22px"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>Run Sales Report</button>
+        </div>
+      </section>
+
+      <!-- INVENTORY REPORT (under construction · next week) — compact placeholder -->
+      <section class="card soon">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap">
+          <div>
+            <div class="card-title"><span class="ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 7v10l9 4 9-4V7"/><path d="M12 11v10"/></svg></span>Inventory Report</div>
+            <div class="card-sub">CRM / Vendor / Inventory_Report</div>
+          </div>
+          <span class="pill soon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>UNDER CONSTRUCTION</span>
+        </div>
+
+        <div class="notice" style="margin-bottom:0">
+          <span class="nico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18"/><path d="M5 21V10l7-5 7 5v11"/><path d="M9 21v-6h6v6"/></svg></span>
+          <div><b>Inventory sync is under construction.</b> Going live next week — the full report &amp; pipeline will appear here once it's ready.</div>
+        </div>
+      </section>
+
+      <!-- ===========================================================
+           BUSINESS ANALYTICS (Power BI) card is hidden for now per
+           request. It is NOT deleted, only commented out. To bring it
+           back later, delete the two sentinel lines (they both start
+           with the word BIZ-CARD) that wrap the section just below.
+           Its CSS (.pbi / .kpi / .embed / .viz / .slicers ...) stays
+           in the style block, so nothing else is needed to restore it.
+      =========================================================== -->
+
+      <!-- BIZ-CARD START
+<section class="card pbi">
+        <div class="pbi-head">
+          <div>
+            <div class="card-title"><span class="ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><rect x="7" y="11" width="3" height="6" rx="1"/><rect x="12" y="7" width="3" height="10" rx="1"/><rect x="17" y="4" width="3" height="13" rx="1"/></svg></span>Business Analytics</div>
+            <div class="card-sub">Power BI · Vendor Performance · Net PPM</div>
+          </div>
+          <div class="pbi-status">
+            <span class="pbi-badge">
+              <svg width="16" height="16" viewBox="0 0 24 24"><rect x="3" y="13" width="3.4" height="8" rx="1" fill="#F2C811"/><rect x="8.7" y="9" width="3.4" height="12" rx="1" fill="#F2C811"/><rect x="14.4" y="5" width="3.4" height="16" rx="1" fill="#E8A400"/><rect x="20.1" y="3" width="1.9" height="18" rx="1" fill="#E8A400"/></svg>
+              Power BI Embedded
+            </span>
+            <span class="refreshed">Refreshed 12:15 UTC</span>
+            <span class="live"><span class="dot ok" style="position:relative"></span>CONNECTED</span>
+            <button class="btn-ghost"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>Refresh</button>
+          </div>
+        </div>
+
+        
+        <div class="kpi-grid">
+          <div class="kpi">
+            <div class="label">Shipped Revenue</div>
+            <div class="num">$1.19M</div>
+            <div class="delta up">▲ 8.6% <span class="vs">vs prev</span></div>
+          </div>
+          <div class="kpi north">
+            <div class="label">Net PPM <span class="star">NORTH STAR</span></div>
+            <div class="num">14.2%</div>
+            <div class="delta up">▲ 1.3 pts <span class="vs">YoY</span></div>
+          </div>
+          <div class="kpi">
+            <div class="label">Sell-Through</div>
+            <div class="num">71.4%</div>
+            <div class="delta up">▲ 2.1% <span class="vs">vs prev</span></div>
+          </div>
+          <div class="kpi">
+            <div class="label">Glance Views</div>
+            <div class="num">3.18M</div>
+            <div class="delta up">▲ 5.4% <span class="vs">vs prev</span></div>
+          </div>
+          <div class="kpi">
+            <div class="label">Buy Box %</div>
+            <div class="num">96.8%</div>
+            <div class="delta down">▼ 0.4% <span class="vs">vs prev</span></div>
+          </div>
+          <div class="kpi">
+            <div class="label">Chargebacks</div>
+            <div class="num">$18.4K</div>
+            <div class="delta up">▼ 12% <span class="vs">favourable</span></div>
+          </div>
+        </div>
+
+        
+        <div class="embed">
+          <div class="embed-bar">
+            <div class="rname">
+              <svg width="18" height="18" viewBox="0 0 24 24"><rect x="3" y="13" width="3.4" height="8" rx="1" fill="#F2C811"/><rect x="8.7" y="9" width="3.4" height="12" rx="1" fill="#F2C811"/><rect x="14.4" y="5" width="3.4" height="16" rx="1" fill="#E8A400"/><rect x="20.1" y="3" width="1.9" height="18" rx="1" fill="#E8A400"/></svg>
+              Vendor Performance — Weekly
+            </div>
+            <div class="tabs">
+              <span class="tab on">Overview</span>
+              <span class="tab">Sales</span>
+              <span class="tab">Net PPM</span>
+              <span class="tab">Inventory</span>
+            </div>
+            <div class="embed-icons">
+              <span title="Filters"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 3H2l8 9.46V19l4 2v-8.54z"/></svg></span>
+              <span title="Full screen"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M16 21h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg></span>
+            </div>
+          </div>
+
+          <div class="embed-body">
+            <aside class="slicers">
+              <div class="slicer"><div class="st">Marketplace</div><span class="chip sel">US</span><span class="chip">CA</span><span class="chip">MX</span></div>
+              <div class="slicer"><div class="st">Date range</div><span class="chip sel">Last 12 weeks</span></div>
+              <div class="slicer"><div class="st">Category</div><span class="chip sel">All</span><span class="chip">Grocery</span><span class="chip">Home</span><span class="chip">Beauty</span></div>
+            </aside>
+
+            <div class="viz">
+              <div class="viz-title">Shipped Revenue &amp; Net PPM</div>
+              <div class="viz-sub">Weekly · US Marketplace · last 12 weeks</div>
+              <div class="viz-legend">
+                <span><i style="background:var(--cyan)"></i>Shipped Revenue ($K)</span>
+                <span><i style="background:#16323f;border-radius:50%"></i>Net PPM (%)</span>
+              </div>
+              <svg viewBox="0 0 720 280" width="100%" height="280" font-family="JetBrains Mono" style="margin-top:auto">
+                <defs>
+                  <linearGradient id="barg" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0" stop-color="#3dd6f2"/><stop offset="1" stop-color="#00bbdf"/>
+                  </linearGradient>
+                </defs>
+                
+                <g stroke="var(--grid)" stroke-width="1">
+                  <line x1="52" y1="18"  x2="704" y2="18"/>
+                  <line x1="52" y1="75"  x2="704" y2="75"/>
+                  <line x1="52" y1="132" x2="704" y2="132"/>
+                  <line x1="52" y1="189" x2="704" y2="189"/>
+                  <line x1="52" y1="246" x2="704" y2="246"/>
+                </g>
+                
+                <g fill="var(--muted)" font-size="9.5" text-anchor="end">
+                  <text x="46" y="22">140</text><text x="46" y="79">105</text><text x="46" y="136">70</text><text x="46" y="193">35</text><text x="46" y="249">0</text>
+                </g>
+                
+                <g fill="#16323f" font-size="9.5" text-anchor="start">
+                  <text x="708" y="22">20</text><text x="708" y="79">15</text><text x="708" y="136">10</text><text x="708" y="193">5</text><text x="708" y="249">0</text>
+                </g>
+                
+                <rect x="66.7" y="119.0" width="25.0" height="127.0" rx="3" fill="url(#barg)"/>
+                <rect x="121.0" y="109.2" width="25.0" height="136.8" rx="3" fill="url(#barg)"/>
+                <rect x="175.3" y="114.1" width="25.0" height="131.9" rx="3" fill="url(#barg)"/>
+                <rect x="229.7" y="96.2" width="25.0" height="149.8" rx="3" fill="url(#barg)"/>
+                <rect x="284.0" y="102.7" width="25.0" height="143.3" rx="3" fill="url(#barg)"/>
+                <rect x="338.3" y="88.0" width="25.0" height="158.0" rx="3" fill="url(#barg)"/>
+                <rect x="392.7" y="78.3" width="25.0" height="167.7" rx="3" fill="url(#barg)"/>
+                <rect x="447.0" y="84.8" width="25.0" height="161.2" rx="3" fill="url(#barg)"/>
+                <rect x="501.3" y="66.9" width="25.0" height="179.1" rx="3" fill="url(#barg)"/>
+                <rect x="555.7" y="57.1" width="25.0" height="188.9" rx="3" fill="url(#barg)"/>
+                <rect x="610.0" y="48.9" width="25.0" height="197.1" rx="3" fill="url(#barg)"/>
+                <rect x="664.3" y="44.1" width="25.0" height="201.9" rx="3" fill="url(#barg)"/>
+                
+                <polyline points="79.2,111.5 133.5,108.1 187.8,109.2 242.2,102.4 296.5,104.6 350.8,97.8 405.2,94.4 459.5,96.7 513.8,91.0 568.2,87.5 622.5,86.4 676.8,84.1" fill="none" stroke="#16323f" stroke-width="2"/>
+                <g><circle cx="79.2" cy="111.5" r="3" fill="#16323f"/><circle cx="133.5" cy="108.1" r="3" fill="#16323f"/><circle cx="187.8" cy="109.2" r="3" fill="#16323f"/><circle cx="242.2" cy="102.4" r="3" fill="#16323f"/><circle cx="296.5" cy="104.6" r="3" fill="#16323f"/><circle cx="350.8" cy="97.8" r="3" fill="#16323f"/><circle cx="405.2" cy="94.4" r="3" fill="#16323f"/><circle cx="459.5" cy="96.7" r="3" fill="#16323f"/><circle cx="513.8" cy="91.0" r="3" fill="#16323f"/><circle cx="568.2" cy="87.5" r="3" fill="#16323f"/><circle cx="622.5" cy="86.4" r="3" fill="#16323f"/><circle cx="676.8" cy="84.1" r="3" fill="#16323f"/></g>
+                
+                <g fill="var(--muted)" font-size="9" text-anchor="middle">
+                  <text x="79" y="262">W1</text><text x="188" y="262">W3</text><text x="296" y="262">W5</text><text x="405" y="262">W7</text><text x="514" y="262">W9</text><text x="622" y="262">W11</text><text x="677" y="262">W12</text>
+                </g>
+              </svg>
+            </div>
+          </div>
+
+          <div class="embed-foot">
+            <span>App Owns Data · Workspace: Horizon-Vendor-US · Dataset: ARA_RetailAnalytics</span>
+            <span>Row-level security: ON · Power BI Embedded</span>
+          </div>
+        </div>
+      </section>
+      BIZ-CARD END -->
+
+      <!-- BOTTOM ROW -->
+      <div class="row2">
+        <section class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <div class="card-title" style="font-size:13px"><span class="ico"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span>API Quota Health</div>
+            <span class="poll">Polls every 15s</span>
+          </div>
+          <div style="margin-top:16px">
+            <div class="quota-row"><span class="name">createReport</span><span class="val v-warn">1 req / 65s</span></div>
+            <div class="quota-row"><span class="name">getReport (poll)</span><span class="val v-cyan">1 req / 2s (polling)</span></div>
+            <div class="quota-row"><span class="name">getReportDocument</span><span class="val v-warn">1 req / 65s</span></div>
+            <div class="quota-row"><span class="name">Concurrency</span><span class="val v-green">max 1 / group (no parallel SP-API)</span></div>
+          </div>
+        </section>
+
+        <section class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+            <div class="card-title" style="font-size:13px"><span class="ico"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 13l3 3 4-6 4 4"/></svg></span>Rate Limiter Telemetry</div>
+            <div class="tele-flags"><span class="flag guard">429 GUARD: ON</span><span class="flag bottle">BOTTLENECK: ON</span></div>
+          </div>
+          <div class="legend">
+            <span class="leg-limit"><i></i>Amazon Limit (0.016 req/s)</span>
+            <span class="leg-rate"><i></i>Our Rate</span>
+          </div>
+          <svg viewBox="0 0 520 190" width="100%" height="180" font-family="JetBrains Mono">
+            <g stroke="var(--grid)" stroke-width="1">
+              <line x1="46" y1="20"  x2="510" y2="20"/>
+              <line x1="46" y1="60"  x2="510" y2="60"/>
+              <line x1="46" y1="100" x2="510" y2="100"/>
+              <line x1="46" y1="140" x2="510" y2="140"/>
+            </g>
+            <g fill="var(--muted)" font-size="10">
+              <text x="6" y="24">0.020</text><text x="6" y="64">0.015</text>
+              <text x="6" y="104">0.010</text><text x="6" y="144">0.005</text>
+            </g>
+            <path d="M46,52 L114,50 L182,53 L250,51 L318,52 L386,50 L454,52 L510,51 L510,170 L46,170 Z" fill="rgba(21,160,111,.10)"/>
+            <line x1="46" y1="44" x2="510" y2="44" stroke="var(--cyan-ink)" stroke-width="2" stroke-dasharray="7 5"/>
+            <polyline points="46,52 114,50 182,53 250,51 318,52 386,50 454,52 510,51" fill="none" stroke="var(--green)" stroke-width="2.5"/>
+            <g fill="var(--green)">
+              <circle cx="46" cy="52" r="3"/><circle cx="114" cy="50" r="3"/><circle cx="182" cy="53" r="3"/><circle cx="250" cy="51" r="3"/><circle cx="318" cy="52" r="3"/><circle cx="386" cy="50" r="3"/><circle cx="454" cy="52" r="3"/><circle cx="510" cy="51" r="3"/>
+            </g>
+          </svg>
+        </section>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<script>
+  const steps = [
+    {l:"REQUEST",  d:"Amazon createReport", t:"12:14:24", i:'<path d="M22 2 11 13M22 2l-7 20-4-9-9-4z"/>'},
+    {l:"QUEUE",    d:"Waiting in SP-API",   t:"",          i:'<line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>'},
+    {l:"PROGRESS", d:"Amazon generating…",  t:"",          i:'<path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/>'},
+    {l:"METADATA", d:"Fetching document…",  t:"12:15:26", i:'<path d="M20.59 13.41 11 23l-9-9 9.59-9.59A2 2 0 0 1 13 4h7v7a2 2 0 0 1-.41 2.41z"/><circle cx="16" cy="8" r="1.4"/>'},
+    {l:"DOWNLOAD", d:"Streaming from S3",   t:"12:15:27", i:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/>'},
+    {l:"PARSE",    d:"Gunzip & JSON parse", t:"12:15:30", i:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/>'},
+    {l:"UPSERT",   d:"Bulk database write", t:"12:15:30", i:'<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/>'},
+    {l:"DONE",     d:"Sync cycle finished", t:"",          i:'<circle cx="12" cy="12" r="10"/><path d="M9 12l2 2 4-4"/>'},
+  ];
+  document.getElementById('pipe').innerHTML = steps.map(s=>`
+    <div class="step">
+      <div class="connector"></div>
+      <div class="node"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${s.i}</svg></div>
+      <div class="lbl">${s.l}</div>
+      <div class="desc">${s.d}</div>
+      ${s.t?`<div class="ts">${s.t}</div>`:''}
+    </div>`).join('');
+
+</script>
