@@ -1,6 +1,4 @@
-<div class="wss-card" [class.wss-healthy]="overallHealth === 'healthy'"
-                   [class.wss-warning]="overallHealth === 'warning'"
-                   [class.wss-critical]="overallHealth === 'critical'">
+<div class="wss-card">
 
   <!-- Header -->
   <div class="wss-head">
@@ -12,17 +10,17 @@
         </svg>
       </div>
       <div>
-        <div class="wss-title">Weekly Schedule Health</div>
-        <div class="wss-sub">Sales sync · Monday baseline</div>
+        <div class="wss-title">Weekly Schedule</div>
+        <div class="wss-sub">Sales sync · runs Monday</div>
       </div>
     </div>
 
     <span class="wss-badge"
-          [class.badge-healthy]="overallHealth === 'healthy'"
-          [class.badge-warning]="overallHealth === 'warning'"
-          [class.badge-critical]="overallHealth === 'critical'">
+          [class.badge-success]="status === 'success'"
+          [class.badge-fail]="status === 'fail'"
+          [class.badge-none]="status === 'none'">
       <span class="badge-dot"></span>
-      {{ overallHealth === 'healthy' ? 'ON SCHEDULE' : overallHealth === 'warning' ? 'CHECK NEEDED' : 'SYNC FAILED' }}
+      {{ status === 'success' ? 'SUCCESS' : status === 'fail' ? 'FAILED' : 'NOT RUN' }}
     </span>
   </div>
 
@@ -30,52 +28,26 @@
   <div class="wss-rows">
 
     <div class="wss-row">
-      <span class="wss-lbl">Last Sync</span>
+      <span class="wss-lbl">Status</span>
       <span class="wss-val">
-        {{ lastSyncLabel }}
-        <span class="wss-status-chip"
-              [class.chip-ok]="salesStatus.lastSyncStatus === 'SUCCESS'"
-              [class.chip-fail]="salesStatus.lastSyncStatus === 'FAILED'"
-              [class.chip-idle]="salesStatus.lastSyncStatus === 'IDLE' || !salesStatus.lastSyncStatus">
-          {{ salesStatus.lastSyncStatus === 'SUCCESS' ? '✓ SUCCESS' :
-             salesStatus.lastSyncStatus === 'FAILED'  ? '✗ FAILED'  :
-             salesStatus.lastSyncStatus === 'IN_PROGRESS' ? '⟳ RUNNING' : '— IDLE' }}
+        <span class="status-ind"
+              [class.ind-success]="status === 'success'"
+              [class.ind-fail]="status === 'fail'"
+              [class.ind-none]="status === 'none'">
+          <span class="ind-dot"></span>
+          {{ status === 'success' ? 'Success' : status === 'fail' ? 'Fail' : 'Not run yet' }}
         </span>
       </span>
     </div>
 
     <div class="wss-row">
       <span class="wss-lbl">Period Synced</span>
-      <span class="wss-val mono">{{ lastPeriodLabel }}</span>
+      <span class="wss-val mono">{{ periodLabel }}</span>
     </div>
 
     <div class="wss-row">
-      <span class="wss-lbl">Days Since Sync</span>
-      <span class="wss-val"
-            [class.val-ok]="daysSinceLastSync !== null && daysSinceLastSync <= 7"
-            [class.val-warn]="daysSinceLastSync !== null && daysSinceLastSync > 7 && daysSinceLastSync <= 14"
-            [class.val-crit]="daysSinceLastSync !== null && daysSinceLastSync > 14">
-        {{ daysSinceLastSync === null ? '—' : daysSinceLastSync === 0 ? 'Today' : daysSinceLastSync + 'd ago' }}
-      </span>
-    </div>
-
-    <div class="wss-row">
-      <span class="wss-lbl">This Week (Mon {{ lastMondayDate }})</span>
-      <span class="wss-val">
-        <span class="week-status"
-              [class.ws-ok]="thisWeekStatus === 'success'"
-              [class.ws-fail]="thisWeekStatus === 'failed'"
-              [class.ws-miss]="thisWeekStatus === 'missing'">
-          {{ thisWeekStatus === 'success' ? '● Sync completed' :
-             thisWeekStatus === 'failed'  ? '● Sync failed' :
-                                            '○ No sync this week' }}
-        </span>
-      </span>
-    </div>
-
-    <div class="wss-row">
-      <span class="wss-lbl">Next Scheduled</span>
-      <span class="wss-val mono">{{ nextRunLabel }}</span>
+      <span class="wss-lbl">Next Schedule</span>
+      <span class="wss-val mono">{{ nextMondayLabel }}</span>
     </div>
 
   </div>

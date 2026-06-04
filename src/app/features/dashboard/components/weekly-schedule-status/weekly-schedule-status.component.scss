@@ -1,11 +1,9 @@
 :host { display: block; }
 
-$green:  #15a06f;
+$green:    #15a06f;
 $green-bg: #eaf8f1;
-$amber:  #c98400;
-$amber-bg: #fbf6ec;
-$red:    #df5350;
-$red-bg: #fdeeed;
+$red:      #df5350;
+$red-bg:   #fdeeed;
 $cyan-ink: #0a7d96;
 
 .wss-card {
@@ -14,12 +12,6 @@ $cyan-ink: #0a7d96;
   border-radius: var(--r);
   box-shadow: var(--shadow-card);
   padding: 20px 22px;
-  border-left: 3px solid var(--border);
-  transition: border-left-color 0.2s ease;
-
-  &.wss-healthy  { border-left-color: $green; }
-  &.wss-warning  { border-left-color: $amber; }
-  &.wss-critical { border-left-color: $red; }
 }
 
 /* ── Header ─────────────────────────────────────────────────────────────── */
@@ -68,7 +60,7 @@ $cyan-ink: #0a7d96;
   letter-spacing: .04em;
 }
 
-/* ── Badge ──────────────────────────────────────────────────────────────── */
+/* ── Badge (single status indicator) ────────────────────────────────────── */
 .wss-badge {
   display: inline-flex;
   align-items: center;
@@ -81,20 +73,20 @@ $cyan-ink: #0a7d96;
   text-transform: uppercase;
   border: 1px solid transparent;
 
-  &.badge-healthy {
+  &.badge-success {
     background: $green-bg;
     color: $green;
     border-color: rgba(21, 160, 111, 0.28);
   }
-  &.badge-warning {
-    background: $amber-bg;
-    color: $amber;
-    border-color: rgba(201, 132, 0, 0.28);
-  }
-  &.badge-critical {
+  &.badge-fail {
     background: $red-bg;
     color: $red;
     border-color: rgba(223, 83, 80, 0.28);
+  }
+  &.badge-none {
+    background: var(--panel-2);
+    color: var(--muted);
+    border-color: var(--border);
   }
 }
 
@@ -110,7 +102,6 @@ $cyan-ink: #0a7d96;
 .wss-rows {
   display: flex;
   flex-direction: column;
-  gap: 0;
 }
 
 .wss-row {
@@ -118,7 +109,7 @@ $cyan-ink: #0a7d96;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 9px 0;
+  padding: 10px 0;
   border-bottom: 1px solid var(--border-soft);
 
   &:last-child { border-bottom: none; }
@@ -138,43 +129,22 @@ $cyan-ink: #0a7d96;
   color: var(--text);
   font-weight: 500;
   text-align: right;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  justify-content: flex-end;
 
   &.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
-  &.val-ok   { color: $green; font-weight: 600; }
-  &.val-warn { color: $amber; font-weight: 600; }
-  &.val-crit { color: $red;   font-weight: 600; }
 }
 
-/* ── Status chip ────────────────────────────────────────────────────────── */
-.wss-status-chip {
+/* ── Status indicator (dot + label) ─────────────────────────────────────── */
+.status-ind {
   display: inline-flex;
   align-items: center;
-  padding: 2px 8px;
-  border-radius: 6px;
-  font-size: 10px;
-  font-weight: 700;
-  font-family: 'JetBrains Mono', monospace;
-  letter-spacing: .04em;
-
-  &.chip-ok   { background: $green-bg; color: $green; }
-  &.chip-fail { background: $red-bg;   color: $red; }
-  &.chip-idle { background: var(--panel-2); color: var(--muted); border: 1px solid var(--border); }
-}
-
-/* ── This-week status ───────────────────────────────────────────────────── */
-.week-status {
-  font-size: 12px;
+  gap: 7px;
   font-weight: 600;
-  font-family: 'IBM Plex Sans', system-ui, sans-serif;
 
-  &.ws-ok   { color: $green; }
-  &.ws-fail { color: $red; }
-  &.ws-miss { color: $amber; }
+  .ind-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+
+  &.ind-success { color: $green; }
+  &.ind-fail    { color: $red; }
+  &.ind-none    { color: var(--muted); }
 }
 
 /* ── Responsive ─────────────────────────────────────────────────────────── */
@@ -184,5 +154,5 @@ $cyan-ink: #0a7d96;
     align-items: flex-start;
     gap: 4px;
   }
-  .wss-val { text-align: left; justify-content: flex-start; }
+  .wss-val { text-align: left; }
 }
