@@ -85,19 +85,19 @@
         <div class="kpi-strip">
           <div class="kpi-box">
             <div class="kpi-lbl">Shipped Revenue</div>
-            <div class="kpi-val">{{ formatCurrency(salesTally.totals.shippedRevenue, salesTally.totals.currency) }}</div>
+            <div class="kpi-val">{{ formatCurrency((salesTallyDisplayTotals || salesTally.totals).shippedRevenue, (salesTallyDisplayTotals || salesTally.totals).currency) }}</div>
             <div class="kpi-period">{{ salesTally.period.startDate | slice:0:10 }} → {{ salesTally.period.endDate | slice:0:10 }}</div>
           </div>
           <div class="kpi-box">
             <div class="kpi-lbl">Shipped Units</div>
-            <div class="kpi-val">{{ formatNumber(salesTally.totals.shippedUnits) }}</div>
-            <div class="kpi-period">{{ salesTally.rowCount }} row{{ salesTally.rowCount !== 1 ? 's' : '' }} of data</div>
+            <div class="kpi-val">{{ formatNumber((salesTallyDisplayTotals || salesTally.totals).shippedUnits) }}</div>
+            <div class="kpi-period">{{ salesTallyTotalRowCount }}{{ salesTallySummaryRowCount ? ' daily' : '' }} row{{ salesTallyTotalRowCount !== 1 ? 's' : '' }} totalled</div>
           </div>
           <div class="kpi-box">
             <div class="kpi-lbl">Shipped COGS</div>
-            <div class="kpi-val">{{ formatCurrency(salesTally.totals.shippedCogs, salesTally.totals.currency) }}</div>
+            <div class="kpi-val">{{ formatCurrency((salesTallyDisplayTotals || salesTally.totals).shippedCogs, (salesTallyDisplayTotals || salesTally.totals).currency) }}</div>
             <div class="kpi-period kpi-margin">
-              Margin {{ grossMarginPct(salesTally.totals.shippedRevenue, salesTally.totals.shippedCogs) | number:'1.1-1' }}%
+              Margin {{ grossMarginPct((salesTallyDisplayTotals || salesTally.totals).shippedRevenue, (salesTallyDisplayTotals || salesTally.totals).shippedCogs) | number:'1.1-1' }}%
             </div>
           </div>
         </div>
@@ -115,10 +115,11 @@
               </tr>
             </thead>
             <tbody>
-              <tr *ngFor="let row of salesTally.dailyAggregates">
+              <tr *ngFor="let row of salesTally.dailyAggregates" [class.summary-row]="isSalesSummaryRow(row)">
                 <td class="week-cell">
                   <span class="week-dot"></span>
                   {{ row.startDate | date:'M/d/yyyy' }} &mdash; {{ row.endDate | date:'M/d/yyyy' }} ( Week {{ getAmazonWeekNumber(row.startDate) }} )
+                  <span *ngIf="isSalesSummaryRow(row)" class="summary-pill">Summary</span>
                 </td>
                 <td class="right rev">{{ formatCurrency(row.shippedRevenueAmount, 'USD') }}</td>
                 <td class="right">{{ formatNumber(row.shippedUnits) }}</td>
@@ -131,12 +132,12 @@
             </tbody>
             <tfoot>
               <tr class="total-row">
-                <td>TOTAL · {{ salesTally.rowCount }} row{{ salesTally.rowCount !== 1 ? 's' : '' }}</td>
-                <td class="right">{{ formatCurrency(salesTally.totals.shippedRevenue, salesTally.totals.currency) }}</td>
-                <td class="right">{{ formatNumber(salesTally.totals.shippedUnits) }}</td>
-                <td class="right">{{ formatCurrency(salesTally.totals.shippedCogs, salesTally.totals.currency) }}</td>
-                <td class="right">{{ grossMarginPct(salesTally.totals.shippedRevenue, salesTally.totals.shippedCogs) | number:'1.1-1' }}%</td>
-                <td class="right">{{ formatNumber(salesTally.totals.customerReturns) }}</td>
+                <td>TOTAL · {{ salesTallyTotalRowCount }}{{ salesTallySummaryRowCount ? ' daily' : '' }} row{{ salesTallyTotalRowCount !== 1 ? 's' : '' }}</td>
+                <td class="right">{{ formatCurrency((salesTallyDisplayTotals || salesTally.totals).shippedRevenue, (salesTallyDisplayTotals || salesTally.totals).currency) }}</td>
+                <td class="right">{{ formatNumber((salesTallyDisplayTotals || salesTally.totals).shippedUnits) }}</td>
+                <td class="right">{{ formatCurrency((salesTallyDisplayTotals || salesTally.totals).shippedCogs, (salesTallyDisplayTotals || salesTally.totals).currency) }}</td>
+                <td class="right">{{ grossMarginPct((salesTallyDisplayTotals || salesTally.totals).shippedRevenue, (salesTallyDisplayTotals || salesTally.totals).shippedCogs) | number:'1.1-1' }}%</td>
+                <td class="right">{{ formatNumber((salesTallyDisplayTotals || salesTally.totals).customerReturns) }}</td>
               </tr>
             </tfoot>
           </table>
@@ -188,36 +189,19 @@
       (stopSync)="onStopSalesNow()">
     </app-sync-timeline>
 
-    <!-- ── WEEKLY SCHEDULE HEALTH ────────────────────────────────────────── -->
-    <app-weekly-schedule-status
-      [salesStatus]="combined.sales">
-    </app-weekly-schedule-status>
-
-    <!-- ── INVENTORY (under construction · slim placeholder) ───────────── -->
-    <section class="card soon">
-      <div class="card-row">
-        <div>
-          <div class="card-title">
-            <span class="ico">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 7v10l9 4 9-4V7"/><path d="M12 11v10"/></svg>
-            </span>
-            Inventory Report
-          </div>
-          <div class="card-sub">CRM / Vendor / Inventory_Report</div>
-        </div>
-        <span class="pill soon">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
-          UNDER CONSTRUCTION
-        </span>
-      </div>
-
-      <div class="notice">
-        <span class="nico">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 21h18"/><path d="M5 21V10l7-5 7 5v11"/><path d="M9 21v-6h6v6"/></svg>
-        </span>
-        <div><b>Inventory sync is under construction</b> — going live next week. The full report &amp; pipeline will appear here once it's ready.</div>
-      </div>
-    </section>
+    <!-- ── INVENTORY REPORT CARD (real pipeline + run) ──────────────────── -->
+    <app-sync-timeline
+      [report]="buildSyncReportMeta(combined.inventory, 'INVENTORY REPORT', 'CRM / VENDOR / INVENTORY_REPORT')"
+      [stages]="inventoryPipeline"
+      [periodStart]="inventorySyncStart"
+      (periodStartChange)="inventorySyncStart = $event"
+      [periodEnd]="inventorySyncEnd"
+      (periodEndChange)="inventorySyncEnd = $event"
+      [isRunning]="isInventoryRequesting || combined.inventory.isSyncing"
+      [isStopping]="isStoppingInventory"
+      (runSync)="onSyncInventoryNow()"
+      (stopSync)="onStopInventoryNow()">
+    </app-sync-timeline>
 
     <!-- ── BOTTOM ROW: Quota + Telemetry ───────────────────────────────── -->
     <div class="row2">

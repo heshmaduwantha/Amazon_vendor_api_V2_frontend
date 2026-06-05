@@ -1,7 +1,7 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Subscription, Observable } from 'rxjs';
+import { Subscription, Observable, finalize } from 'rxjs';
 import { ChartModule } from 'primeng/chart';
 import { TimelineModule } from 'primeng/timeline';
 import { ProgressSpinnerModule } from 'primeng/progressspinner';
@@ -21,9 +21,10 @@ import {
   SalesSummaryResult,
   InventorySnapshotResult,
   ForecastSnapshotResult,
+  SalesAggregateRow,
+  SalesTotals,
 } from '../../data/services/dashboard.service';
 import { SyncTimelineComponent, SyncReportMeta } from './components/sync-timeline/sync-timeline.component';
-import { WeeklyScheduleStatusComponent } from './components/weekly-schedule-status/weekly-schedule-status.component';
 
 @Component({
   selector: 'app-dashboard',
@@ -33,7 +34,6 @@ import { WeeklyScheduleStatusComponent } from './components/weekly-schedule-stat
     ChartModule, TimelineModule, ProgressSpinnerModule,
     MessageModule, ButtonModule, ToastModule, TagModule, TooltipModule,
     SyncTimelineComponent,
-    WeeklyScheduleStatusComponent,
   ],
   templateUrl: './dashboard.component.html',
   styleUrls:  ['./dashboard.component.scss'],
@@ -51,6 +51,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   isForecastRequesting  = false;
 
   isStoppingSales       = false;
+  isStoppingInventory   = false;
 
   // ── Today ─────────────────────────────────────────────────────────────────
   todayStr = new Date().toISOString().split('T')[0];
@@ -67,6 +68,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
   tallyStartDate    = '';
   tallyEndDate      = '';
   salesTally:       SalesSummaryResult      | null = null;
+  salesTallyDisplayTotals: SalesTotals | null = null;
+  salesTallyTotalRowCount = 0;
+  salesTallySummaryRowCount = 0;
   inventoryTally:   InventorySnapshotResult | null = null;
   forecastTally:    ForecastSnapshotResult  | null = null;
   isFetchingTally   = false;
@@ -106,7 +110,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.inventorySyncStart = '';
     this.inventorySyncEnd   = '';
 
-    const { startDate, endDate } = this.dashboardService.getLastCompletedWeekDates(3);
+    const { startDate, endDate } = this.dashboardService.getLastCompletedWeekDates();
     this.tallyStartDate = startDate;
     this.tallyEndDate   = endDate;
   }
@@ -123,19 +127,26 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   getAmazonWeekNumber(dateStr: string): number {
     if (!dateStr) return 0;
-    const date = new Date(dateStr);
-    const day = date.getDay();
-    const sunday = new Date(date);
-    sunday.setDate(date.getDate() - day);
-    
-    // Amazon 2026 Week 1 starts on 2025-12-28
-    const week1Start = new Date('2025-12-28T00:00:00');
-    
-    const utcSunday = Date.UTC(sunday.getFullYear(), sunday.getMonth(), sunday.getDate());
-    const utcWeek1 = Date.UTC(week1Start.getFullYear(), week1Start.getMonth(), week1Start.getDate());
-    
-    const diffDays = Math.floor((utcSunday - utcWeek1) / (1000 * 60 * 60 * 24));
+    const date = new Date(`${dateStr.slice(0, 10)}T00:00:00Z`);
+    const weekStart = new Date(date);
+    weekStart.setUTCDate(date.getUTCDate() - date.getUTCDay());
+
+    let amazonYear = date.getUTCFullYear();
+    let yearStart = this.firstSundayOnOrAfterJanOne(amazonYear);
+    if (date < yearStart) {
+      amazonYear -= 1;
+      yearStart = this.firstSundayOnOrAfterJanOne(amazonYear);
+    }
+
+    const diffDays = Math.floor((weekStart.getTime() - yearStart.getTime()) / 86_400_000);
     return Math.floor(diffDays / 7) + 1;
+  }
+
+  private firstSundayOnOrAfterJanOne(year: number): Date {
+    const janOne = new Date(Date.UTC(year, 0, 1));
+    const daysUntilSunday = (7 - janOne.getUTCDay()) % 7;
+    janOne.setUTCDate(janOne.getUTCDate() + daysUntilSunday);
+    return janOne;
   }
 
   buildSyncReportMeta(status: ReportSyncStatus, name: string, path: string): SyncReportMeta {
@@ -176,33 +187,36 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   onSyncSalesNow(): void {
     this.isSalesRequesting = true;
-    this.dashboardService.triggerSalesSync(this.salesSyncStart, this.salesSyncEnd).subscribe({
+    this.dashboardService.triggerSalesSync(this.salesSyncStart, this.salesSyncEnd).pipe(
+      finalize(() => { this.isSalesRequesting = false; }),
+    ).subscribe({
       next: (res: any) => {
         this.messageService.add({ severity: 'success', summary: 'Sales Sync Started', detail: res.message });
         this.salesSyncStart = '';
         this.salesSyncEnd = '';
-        this.isSalesRequesting = false;
+        this.dashboardService.refreshStatus().subscribe();
       },
       error: (err: any) => {
         const detail = err.status === 409
           ? 'Sales sync is already running.'
           : err.error?.message || 'Could not initiate sales sync.';
         this.messageService.add({ severity: err.status === 409 ? 'warn' : 'error', summary: 'Sales Sync', detail });
-        this.isSalesRequesting = false;
       },
     });
   }
 
   onStopSalesNow(): void {
     this.isStoppingSales = true;
-    this.dashboardService.cancelSalesSync().subscribe({
+    this.dashboardService.cancelSalesSync().pipe(
+      finalize(() => { this.isStoppingSales = false; }),
+    ).subscribe({
       next: (res) => {
         this.messageService.add({
           severity: res.cancelled ? 'info' : 'warn',
           summary: 'Stop Sales Sync',
           detail: res.message,
         });
-        this.isStoppingSales = false;
+        this.dashboardService.refreshStatus().subscribe();
       },
       error: (err: any) => {
         this.messageService.add({
@@ -210,26 +224,49 @@ export class DashboardComponent implements OnInit, OnDestroy {
           summary: 'Stop Sales Sync',
           detail: err.error?.message || 'Could not cancel the sync.',
         });
-        this.isStoppingSales = false;
       },
     });
   }
 
   onSyncInventoryNow(): void {
     this.isInventoryRequesting = true;
-    this.dashboardService.triggerInventorySync(this.inventorySyncStart, this.inventorySyncEnd).subscribe({
+    this.dashboardService.triggerInventorySync(this.inventorySyncStart, this.inventorySyncEnd).pipe(
+      finalize(() => { this.isInventoryRequesting = false; }),
+    ).subscribe({
       next: (res: any) => {
         this.messageService.add({ severity: 'success', summary: 'Inventory Sync Started', detail: res.message });
         this.inventorySyncStart = '';
         this.inventorySyncEnd = '';
-        this.isInventoryRequesting = false;
+        this.dashboardService.refreshStatus().subscribe();
       },
       error: (err: any) => {
         const detail = err.status === 409
           ? 'Inventory sync is already running.'
           : err.error?.message || 'Could not initiate inventory sync.';
         this.messageService.add({ severity: err.status === 409 ? 'warn' : 'error', summary: 'Inventory Sync', detail });
-        this.isInventoryRequesting = false;
+      },
+    });
+  }
+
+  onStopInventoryNow(): void {
+    this.isStoppingInventory = true;
+    this.dashboardService.cancelInventorySync().pipe(
+      finalize(() => { this.isStoppingInventory = false; }),
+    ).subscribe({
+      next: (res) => {
+        this.messageService.add({
+          severity: res.cancelled ? 'info' : 'warn',
+          summary: 'Stop Inventory Sync',
+          detail: res.message,
+        });
+        this.dashboardService.refreshStatus().subscribe();
+      },
+      error: (err: any) => {
+        this.messageService.add({
+          severity: 'error',
+          summary: 'Stop Inventory Sync',
+          detail: err.error?.message || 'Could not cancel the inventory sync.',
+        });
       },
     });
   }
@@ -242,6 +279,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.isFetchingTally   = true;
     this.tallyError        = null;
     this.salesTally        = null;
+    this.salesTallyDisplayTotals = null;
+    this.salesTallyTotalRowCount = 0;
+    this.salesTallySummaryRowCount = 0;
     this.inventoryTally    = null;
     this.forecastTally     = null;
     this.salesAsinRows     = [];
@@ -249,7 +289,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
     this.subs.add(
       this.dashboardService.getSalesSummary(this.tallyStartDate, this.tallyEndDate).subscribe({
-        next:  res  => { this.salesTally = res; this.isFetchingTally = false; },
+        next:  res  => { this.setSalesTally(res); this.isFetchingTally = false; },
         error: err  => { this.tallyError = err.error?.message || 'Failed to fetch sales tally.'; this.isFetchingTally = false; },
       }),
     );
@@ -268,12 +308,61 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   onResetTallyDates(): void {
-    const { startDate, endDate } = this.dashboardService.getLastCompletedWeekDates(3);
+    const { startDate, endDate } = this.dashboardService.getLastCompletedWeekDates();
     this.tallyStartDate = startDate;
     this.tallyEndDate   = endDate;
   }
 
+  private setSalesTally(summary: SalesSummaryResult): void {
+    this.salesTally = summary;
+    const rowsForTotals = this.rowsForSalesTotals(summary);
+    this.salesTallyDisplayTotals = rowsForTotals.length > 0
+      ? this.sumSalesRows(rowsForTotals, summary.totals.currency)
+      : summary.totals;
+    this.salesTallyTotalRowCount = rowsForTotals.length || summary.totalRowCount || summary.rowCount;
+    this.salesTallySummaryRowCount = summary.summaryRowCount ?? this.salesSummaryRows(summary).length;
+  }
+
+  private rowsForSalesTotals(summary: SalesSummaryResult): SalesAggregateRow[] {
+    const rows = summary.dailyAggregates ?? [];
+    const dailyRows = rows.filter(row => !this.isSalesSummaryRow(row));
+    return dailyRows.length > 0 ? dailyRows : rows;
+  }
+
+  private salesSummaryRows(summary: SalesSummaryResult): SalesAggregateRow[] {
+    return summary.summaryRows ?? (summary.dailyAggregates ?? []).filter(row => this.isSalesSummaryRow(row));
+  }
+
+  private sumSalesRows(rows: SalesAggregateRow[], currency: string): SalesTotals {
+    const totals = rows.reduce(
+      (acc, row) => ({
+        orderedUnits: acc.orderedUnits + Number(row.orderedUnits || 0),
+        orderedRevenue: acc.orderedRevenue + Number(row.orderedRevenueAmount || 0),
+        shippedUnits: acc.shippedUnits + Number(row.shippedUnits || 0),
+        shippedRevenue: acc.shippedRevenue + Number(row.shippedRevenueAmount || 0),
+        shippedCogs: acc.shippedCogs + Number(row.shippedCogsAmount || 0),
+        customerReturns: acc.customerReturns + Number(row.customerReturns || 0),
+        currency,
+      }),
+      { orderedUnits: 0, orderedRevenue: 0, shippedUnits: 0, shippedRevenue: 0, shippedCogs: 0, customerReturns: 0, currency },
+    );
+    return {
+      ...totals,
+      orderedRevenue: this.roundMoney(totals.orderedRevenue),
+      shippedRevenue: this.roundMoney(totals.shippedRevenue),
+      shippedCogs: this.roundMoney(totals.shippedCogs),
+    };
+  }
+
+  private roundMoney(value: number): number {
+    return Math.round((value + Number.EPSILON) * 100) / 100;
+  }
+
   // ── Helpers ───────────────────────────────────────────────────────────────
+
+  isSalesSummaryRow(row: SalesAggregateRow): boolean {
+    return row.startDate.slice(0, 10) !== row.endDate.slice(0, 10);
+  }
 
   grossMarginPct(revenue: number, cogs: number): number {
     if (!revenue) return 0;

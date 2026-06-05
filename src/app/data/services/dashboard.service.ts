@@ -16,11 +16,28 @@ export interface SalesTotals {
   currency:        string;
 }
 
+export interface SalesAggregateRow {
+  startDate: string;
+  endDate: string;
+  customerReturns: number;
+  orderedRevenueAmount: number;
+  orderedRevenueCurrency: string;
+  orderedUnits: number;
+  shippedCogsAmount: number;
+  shippedCogsCurrency: string;
+  shippedRevenueAmount: number;
+  shippedRevenueCurrency: string;
+  shippedUnits: number;
+}
+
 export interface SalesSummaryResult {
   period:          { startDate: string; endDate: string };
-  dailyAggregates: any[];
+  dailyAggregates: SalesAggregateRow[];
+  summaryRows?:    SalesAggregateRow[];
   totals:          SalesTotals;
   rowCount:        number;
+  totalRowCount?:   number;
+  summaryRowCount?: number;
 }
 
 export interface InventorySnapshotSummary {
@@ -76,6 +93,7 @@ export interface ReportSyncStatus {
   lastError: string | null;
   stageTimestamps: Record<string, string>;
   lastSyncPeriod: { startDate: string; endDate: string } | null;
+  lastSyncPeriods?: SchedulerWeekRange[] | null;
   nextScheduledAt: string;
 }
 
@@ -109,6 +127,33 @@ export interface QuotaGroup {
   calculatedMinDelay: string | null;
 }
 
+export interface SchedulerWeekRange {
+  amazonYear: number;
+  weekNumber: number;
+  label: string;
+  startDate: string;
+  endDate: string;
+}
+
+export interface SchedulerStatus {
+  enabled: boolean;
+  dayOfWeek: number;
+  dayLabel: string;
+  timeOfDay: string;
+  timezone: string;
+  scheduleLabel: string;
+  nextScheduledAt: string | null;
+  lastRunStartedAt: string | null;
+  lastRunFinishedAt: string | null;
+  lastRunStatus: 'NEVER' | 'RUNNING' | 'SUCCESS' | 'FAILED';
+  lastRunError: string | null;
+  lastRunWeekRanges: SchedulerWeekRange[] | null;
+  updatedAt: string | null;
+}
+
+export type SalesSchedulerStatus = SchedulerStatus;
+export type InventorySchedulerStatus = SchedulerStatus;
+
 export interface SystemHealth {
   timestamp:   string;
   apiHealth: {
@@ -123,6 +168,8 @@ export interface SystemHealth {
     concurrency:       string;
   };
   quotaGroups: QuotaGroup[];
+  salesScheduler: SalesSchedulerStatus;
+  inventoryScheduler: InventorySchedulerStatus;
 }
 
 // ─── Pipeline Definitions ─────────────────────────────────────────────────────
@@ -193,6 +240,18 @@ export class DashboardService {
   getCombinedStatus(): Observable<CombinedSyncStatus> { return this.combinedSubject.asObservable(); }
   getSystemHealth():   Observable<SystemHealth | null>  { return this.healthSubject.asObservable(); }
 
+  refreshStatus(): Observable<CombinedSyncStatus> {
+    return this.http.get<CombinedSyncStatus>(`${environment.apiUrl}/sync/status`).pipe(
+      tap(s => this.combinedSubject.next(s)),
+    );
+  }
+
+  refreshHealth(): Observable<SystemHealth> {
+    return this.http.get<SystemHealth>(`${environment.apiUrl}/sync/health`).pipe(
+      tap(h => this.healthSubject.next(h)),
+    );
+  }
+
   // ── Manual Triggers ───────────────────────────────────────────────────────
 
   triggerSalesSync(startDate: string, endDate: string): Observable<any> {
@@ -205,6 +264,32 @@ export class DashboardService {
 
   triggerForecastSync(startDate: string, endDate: string): Observable<any> {
     return this.http.post(`${environment.apiUrl}/sync/manual/forecast`, { startDate, endDate });
+  }
+
+  getSalesSchedulerStatus(): Observable<SalesSchedulerStatus> {
+    return this.http.get<SalesSchedulerStatus>(`${environment.apiUrl}/sync/scheduler/sales`);
+  }
+
+  updateSalesSchedulerSettings(payload: {
+    enabled: boolean;
+    dayOfWeek: number;
+    timeOfDay: string;
+    timezone: string;
+  }): Observable<SalesSchedulerStatus> {
+    return this.http.put<SalesSchedulerStatus>(`${environment.apiUrl}/sync/scheduler/sales`, payload);
+  }
+
+  getInventorySchedulerStatus(): Observable<InventorySchedulerStatus> {
+    return this.http.get<InventorySchedulerStatus>(`${environment.apiUrl}/sync/scheduler/inventory`);
+  }
+
+  updateInventorySchedulerSettings(payload: {
+    enabled: boolean;
+    dayOfWeek: number;
+    timeOfDay: string;
+    timezone: string;
+  }): Observable<InventorySchedulerStatus> {
+    return this.http.put<InventorySchedulerStatus>(`${environment.apiUrl}/sync/scheduler/inventory`, payload);
   }
 
   // ── Cancellation ──────────────────────────────────────────────────────────
@@ -268,18 +353,16 @@ export class DashboardService {
     );
   }
 
-  /**
-   * Mirrors the backend getLastCompletedWeek(lagDays=3) algorithm:
-   * last Mon→Sun week where Sunday is at least 3 days ago.
-   */
-  getLastCompletedWeekDates(lagDays = 3): { startDate: string; endDate: string } {
-    const now     = new Date();
-    const cutoff  = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - lagDays));
-    const dow     = cutoff.getUTCDay();
-    const weekEnd = new Date(cutoff);
-    if (dow !== 0) weekEnd.setUTCDate(cutoff.getUTCDate() - dow);
-    const weekStart = new Date(weekEnd);
-    weekStart.setUTCDate(weekEnd.getUTCDate() - 6);
+  /** Last completed Amazon Sunday→Saturday week. */
+  getLastCompletedWeekDates(): { startDate: string; endDate: string } {
+    const now = new Date();
+    const todayUtc = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    const currentWeekStart = new Date(todayUtc);
+    currentWeekStart.setUTCDate(todayUtc.getUTCDate() - todayUtc.getUTCDay());
+    const weekStart = new Date(currentWeekStart);
+    weekStart.setUTCDate(currentWeekStart.getUTCDate() - 7);
+    const weekEnd = new Date(weekStart);
+    weekEnd.setUTCDate(weekStart.getUTCDate() + 6);
     return {
       startDate: weekStart.toISOString().split('T')[0],
       endDate:   weekEnd.toISOString().split('T')[0],

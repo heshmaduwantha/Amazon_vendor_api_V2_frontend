@@ -1,0 +1,238 @@
+:host { display: block; }
+
+.settings-page {
+  display: block;
+  min-height: 100vh;
+  color: var(--text);
+  font-family: 'IBM Plex Sans', system-ui, sans-serif;
+  padding-bottom: 60px;
+}
+
+.topstrip {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 11px 30px; font-size: 12px; color: var(--text-dim);
+  border-bottom: 1px solid var(--border); background: #fbfdfe;
+  flex-wrap: wrap; gap: 8px;
+}
+.topstrip .note { color: var(--muted); font-size: 11px; }
+
+.head {
+  padding: 26px 30px 8px;
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 20px; flex-wrap: wrap;
+}
+.head-title {
+  font-family: 'Archivo', system-ui, sans-serif;
+  font-weight: 800; font-size: 26px; margin: 0;
+  letter-spacing: -.4px; color: var(--text);
+}
+.crumbs { color: var(--cyan-ink); font-size: 13px; margin-top: 6px; font-weight: 600; }
+
+.settings-shell {
+  padding: 18px 30px;
+  display: flex; flex-direction: column; gap: 20px;
+}
+
+.card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  box-shadow: var(--shadow-card);
+  padding: 24px;
+}
+.card-row {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 16px; flex-wrap: wrap;
+}
+.card-title {
+  display: flex; align-items: center; gap: 10px;
+  font-family: 'Archivo', system-ui, sans-serif;
+  font-weight: 700; font-size: 14px; letter-spacing: .12em;
+  text-transform: uppercase; color: var(--text);
+}
+.card-title .ico {
+  width: 34px; height: 34px; border-radius: 9px;
+  display: grid; place-items: center;
+  background: rgba(0, 187, 223, 0.10);
+  border: 1px solid var(--border); color: var(--cyan-ink);
+  flex-shrink: 0;
+}
+.card-sub {
+  color: var(--muted); font-size: 11px; letter-spacing: .18em;
+  text-transform: uppercase; margin: 4px 0 0 44px;
+  font-family: 'JetBrains Mono', monospace;
+  overflow-wrap: anywhere;
+}
+
+.scheduler-badge {
+  display: inline-flex; align-items: center; gap: 8px;
+  border-radius: 999px; border: 1px solid var(--border);
+  padding: 8px 12px; font-size: 11px; font-weight: 800;
+  letter-spacing: .06em; background: #fff;
+}
+.scheduler-badge.enabled { color: var(--green); border-color: rgba(21, 160, 111, 0.28); }
+.scheduler-badge.disabled { color: var(--red); border-color: rgba(223, 83, 80, 0.28); }
+.dot {
+  width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+}
+.dot.ok { background: var(--green); }
+.dot.err { background: var(--red); }
+
+.tabs {
+  display: inline-flex; gap: 6px; margin-top: 22px;
+  padding: 4px; border: 1px solid var(--border);
+  background: var(--panel-2); border-radius: 10px;
+}
+.tab {
+  border: 0; background: transparent; color: var(--text-dim);
+  min-height: 38px; padding: 8px 13px; border-radius: 7px;
+  cursor: pointer; font-size: 13px; font-weight: 700;
+  display: inline-flex; align-items: center; gap: 8px;
+}
+.tab.active {
+  background: #fff; color: var(--cyan-ink);
+  box-shadow: 0 3px 10px rgba(16, 41, 54, 0.08);
+}
+.tab span {
+  font-size: 9px; color: var(--amber);
+  text-transform: uppercase; letter-spacing: .06em;
+}
+
+.scheduler-grid {
+  display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(280px, .95fr);
+  gap: 18px; margin-top: 18px;
+}
+.scheduler-status,
+.scheduler-settings {
+  background: var(--panel-2);
+  border: 1px solid var(--border-soft);
+  border-radius: 12px;
+  padding: 16px;
+}
+.section-title {
+  color: var(--cyan-ink); font-size: 11px; font-weight: 800;
+  letter-spacing: .08em; text-transform: uppercase; margin-bottom: 8px;
+}
+.scheduler-stat-row,
+.week-range {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; min-height: 36px; border-bottom: 1px solid var(--border-soft);
+  font-size: 12.5px;
+}
+.scheduler-stat-row:last-of-type,
+.week-range:last-child { border-bottom: none; }
+.scheduler-stat-row span,
+.week-range span { color: var(--muted); }
+.scheduler-stat-row b,
+.week-range b {
+  color: var(--text); font-family: 'JetBrains Mono', monospace;
+  font-size: 12px; text-align: right; overflow-wrap: anywhere;
+}
+.scheduler-status-pill {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 86px; border-radius: 999px; padding: 5px 9px;
+  font-size: 10.5px; font-weight: 800; letter-spacing: .05em;
+  text-transform: uppercase;
+}
+.status-success { color: var(--green); background: rgba(21, 160, 111, 0.10); }
+.status-fail { color: var(--red); background: var(--red-bg); }
+.status-running { color: var(--amber); background: var(--amber-bg); }
+.status-none { color: var(--muted); background: #edf3f6; }
+.scheduler-error {
+  margin-top: 12px; padding: 10px 12px; border-radius: 10px;
+  color: var(--red); background: var(--red-bg);
+  border: 1px solid rgba(223, 83, 80, 0.24); font-size: 12px;
+}
+.week-ranges {
+  margin-top: 14px; border-top: 1px solid var(--border); padding-top: 10px;
+}
+
+.toggle-row {
+  display: flex; align-items: center; gap: 9px; font-size: 13px;
+  color: var(--text-dim); margin-bottom: 12px;
+}
+.toggle-row input { width: 16px; height: 16px; accent-color: var(--cyan-ink); }
+.settings-fields {
+  display: grid; grid-template-columns: minmax(120px, .8fr) minmax(110px, .7fr) minmax(190px, 1.2fr);
+  gap: 10px;
+}
+.settings-fields label {
+  display: flex; flex-direction: column; gap: 6px;
+  color: var(--muted); font-size: 11px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .06em;
+}
+.settings-fields select,
+.settings-fields input {
+  width: 100%; min-height: 38px; border-radius: var(--r-sm);
+  border: 1px solid var(--border); background: #fff;
+  color: var(--text); padding: 8px 10px;
+  font-family: 'JetBrains Mono', monospace; font-size: 12px;
+  outline: none;
+}
+.settings-fields select:focus,
+.settings-fields input:focus { border-color: var(--cyan); box-shadow: var(--focus); }
+
+.btn {
+  border: none; cursor: pointer; border-radius: var(--r-sm);
+  font-weight: 600; font-family: 'IBM Plex Sans', sans-serif;
+  display: inline-flex; align-items: center; gap: 9px;
+  padding: 10px 18px; font-size: 13.5px;
+  transition: transform .18s, box-shadow .18s;
+}
+.btn-primary {
+  background: linear-gradient(135deg, var(--cyan), var(--teal-dark));
+  color: #fff; box-shadow: 0 8px 20px -10px rgba(0, 150, 180, 0.7);
+}
+.btn-primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 26px -10px rgba(0, 150, 180, 0.85);
+}
+.btn:disabled { cursor: not-allowed; background: #e6edf1; color: #9fb1bc; box-shadow: none; }
+.scheduler-save { margin-top: 12px; width: fit-content; }
+.date-error {
+  margin-top: 14px; font-size: 11px; color: var(--red); padding: 8px 12px;
+  background: var(--red-bg); border: 1px solid rgba(223, 83, 80, 0.25); border-radius: 8px;
+}
+
+.under-construction {
+  display: flex; align-items: center; gap: 13px; margin-top: 18px;
+  padding: 18px;
+  background: repeating-linear-gradient(45deg, #fbf6ec, #fbf6ec 12px, #f8f0df 12px, #f8f0df 24px);
+  border: 1px solid rgba(201, 132, 0, 0.28); border-radius: 12px;
+  color: #8a6313; font-size: 13px;
+}
+.under-construction .uc-icon {
+  flex: 0 0 auto; width: 38px; height: 38px; border-radius: 9px;
+  display: grid; place-items: center;
+  background: rgba(201, 132, 0, 0.14); color: var(--amber);
+}
+.under-construction b { display: block; color: #6f4f0e; margin-bottom: 3px; }
+.under-construction span:last-child { color: #8a6313; }
+
+@media (max-width: 980px) {
+  .scheduler-grid { grid-template-columns: 1fr; }
+  .head, .topstrip, .settings-shell { padding-left: 18px; padding-right: 18px; }
+}
+
+@media (max-width: 760px) {
+  .head { padding-top: 20px; }
+  .head-title { font-size: 22px; }
+  .card { padding: 18px; }
+  .settings-fields { grid-template-columns: 1fr; }
+  .scheduler-stat-row,
+  .week-range { align-items: flex-start; flex-direction: column; padding: 9px 0; }
+  .scheduler-stat-row b,
+  .week-range b { text-align: left; }
+  .tabs { display: flex; width: 100%; }
+  .tab { flex: 1; justify-content: center; flex-wrap: wrap; }
+}
+
+@media (max-width: 480px) {
+  .head, .topstrip, .settings-shell { padding-left: 14px; padding-right: 14px; }
+  .topstrip { font-size: 11px; }
+  .head-title { font-size: 20px; }
+  .card-sub { margin-left: 0; font-size: 10px; letter-spacing: .06em; }
+  .card-title { font-size: 12.5px; }
+  .scheduler-save { width: 100%; justify-content: center; }
+  .under-construction { align-items: flex-start; }
+}

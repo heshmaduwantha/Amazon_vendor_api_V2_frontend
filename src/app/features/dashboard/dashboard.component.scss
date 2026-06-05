@@ -89,14 +89,13 @@
 }
 @keyframes rise { to { opacity: 1; transform: none; } }
 
-/* Every direct grid child (cards, sync-timeline, weekly widget, row2) gets the
+/* Every direct grid child (cards, sync-timeline, row2) gets the
    same staggered rise — robust regardless of element type or order. */
 .grid > * {
   opacity: 0; transform: translateY(10px);
   animation: rise .55s cubic-bezier(.2,.7,.3,1) forwards;
 }
-.grid > app-sync-timeline,
-.grid > app-weekly-schedule-status { display: block; }
+.grid > app-sync-timeline { display: block; }
 
 .grid > *:nth-child(1) { animation-delay: .05s; }
 .grid > *:nth-child(2) { animation-delay: .13s; }
@@ -234,11 +233,16 @@
     border-bottom: 1px solid var(--border-soft);
     font-family: 'JetBrains Mono', monospace;
   }
-  tbody tr:last-child td { border-bottom: none; }
-  tbody tr:hover td { background: rgba(0, 187, 223, 0.04); }
-  tfoot .total-row td {
-    background: rgba(0, 187, 223, 0.06);
-    border-top: 1px solid rgba(0, 187, 223, 0.15);
+	  tbody tr:last-child td { border-bottom: none; }
+	  tbody tr:hover td { background: rgba(0, 187, 223, 0.04); }
+	  tbody tr.summary-row td {
+	    background: rgba(201, 132, 0, 0.06);
+	    color: #6f5600;
+	  }
+	  tbody tr.summary-row:hover td { background: rgba(201, 132, 0, 0.09); }
+	  tfoot .total-row td {
+	    background: rgba(0, 187, 223, 0.06);
+	    border-top: 1px solid rgba(0, 187, 223, 0.15);
     color: var(--cyan-ink); font-weight: 700; border-bottom: none;
   }
   .right { text-align: right; }
@@ -249,6 +253,14 @@
 }
 .week-cell { display: flex; align-items: center; gap: 8px; font-family: 'IBM Plex Sans', sans-serif; }
 .week-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; background: var(--cyan); }
+.summary-row .week-dot { background: var(--amber); }
+.summary-pill {
+  display: inline-flex; align-items: center; min-height: 18px; padding: 2px 7px;
+  border-radius: 999px; border: 1px solid rgba(201, 132, 0, 0.22);
+  background: rgba(201, 132, 0, 0.11); color: #7a5b00;
+  font-family: 'IBM Plex Sans', sans-serif; font-size: 10px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .04em; white-space: nowrap;
+}
 
 /* ── Inventory snapshot ─────────────────────────────────────────────────── */
 .inv-snapshot {
@@ -272,31 +284,6 @@
 .inv-no-data {
   font-size: 12px; color: var(--muted); padding: 10px 14px;
   background: var(--panel); border: 1px dashed var(--border); border-radius: 8px;
-}
-
-/* ── Inventory under-construction (slim placeholder) ────────────────────── */
-.pill {
-  display: inline-flex; align-items: center; gap: 7px;
-  padding: 7px 13px; border-radius: 999px;
-  font-size: 11.5px; font-weight: 600; letter-spacing: .05em;
-}
-.pill.soon {
-  background: rgba(201, 132, 0, 0.10); color: var(--amber);
-  border: 1px solid rgba(201, 132, 0, 0.30);
-}
-.card.soon .card-title .ico { background: rgba(201, 132, 0, 0.10); color: var(--amber); }
-.notice {
-  display: flex; align-items: center; gap: 13px; margin-top: 20px;
-  padding: 14px 18px;
-  background: repeating-linear-gradient(45deg, #fbf6ec, #fbf6ec 12px, #f8f0df 12px, #f8f0df 24px);
-  border: 1px solid rgba(201, 132, 0, 0.28); border-radius: 12px;
-  color: #8a6313; font-size: 13px;
-  .nico {
-    flex: 0 0 auto; width: 34px; height: 34px; border-radius: 9px;
-    display: grid; place-items: center;
-    background: rgba(201, 132, 0, 0.14); color: var(--amber);
-  }
-  b { color: #6f4f0e; }
 }
 
 /* ── Quota health ───────────────────────────────────────────────────────── */

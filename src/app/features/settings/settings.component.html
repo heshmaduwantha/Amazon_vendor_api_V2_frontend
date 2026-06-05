@@ -1,0 +1,226 @@
+<p-toast></p-toast>
+
+<ng-container *ngIf="combined$ | async as combined">
+<ng-container *ngIf="health$ | async as health">
+
+<main class="settings-page">
+  <div class="topstrip">
+    <div>Settings</div>
+    <div class="note">Weekly automation is configured here; dashboard stays focused on sync and tally work.</div>
+  </div>
+
+  <div class="head">
+    <div>
+      <h2 class="head-title">Settings</h2>
+      <div class="crumbs">Horizon Group of USA · Amazon Vendor Central · US Marketplace</div>
+    </div>
+  </div>
+
+  <div class="settings-shell">
+    <section class="card weekly-panel" *ngIf="health.salesScheduler as salesScheduler">
+      <div class="card-row">
+        <div>
+          <div class="card-title">
+            <span class="ico">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01M16 18h.01"/></svg>
+            </span>
+            Weekly Schedule
+          </div>
+          <div class="card-sub">Amazon week: Sunday-Saturday · each enabled scheduler fetches 3 completed weeks</div>
+        </div>
+        <span class="scheduler-badge"
+              [class.enabled]="activeWeeklyTab === 'sales' ? salesScheduler.enabled : health.inventoryScheduler.enabled"
+              [class.disabled]="activeWeeklyTab === 'sales' ? !salesScheduler.enabled : !health.inventoryScheduler.enabled">
+          <span class="dot"
+                [class.ok]="activeWeeklyTab === 'sales' ? salesScheduler.enabled : health.inventoryScheduler.enabled"
+                [class.err]="activeWeeklyTab === 'sales' ? !salesScheduler.enabled : !health.inventoryScheduler.enabled"></span>
+          {{ (activeWeeklyTab === 'sales' ? salesScheduler.enabled : health.inventoryScheduler.enabled) ? 'ENABLED' : 'DISABLED' }}
+        </span>
+      </div>
+
+      <div class="tabs" role="tablist" aria-label="Weekly schedule settings">
+        <button type="button"
+                class="tab"
+                [class.active]="activeWeeklyTab === 'sales'"
+                (click)="activeWeeklyTab = 'sales'">
+          Sales
+        </button>
+        <button type="button"
+                class="tab"
+                [class.active]="activeWeeklyTab === 'inventory'"
+                (click)="activeWeeklyTab = 'inventory'">
+          Inventory
+        </button>
+      </div>
+
+      <div *ngIf="activeWeeklyTab === 'sales'" class="scheduler-grid">
+        <div class="scheduler-status">
+          <div class="section-title">Sales schedule status</div>
+          <div class="scheduler-stat-row">
+            <span>Configured schedule</span>
+            <b>{{ salesScheduler.dayLabel }} {{ salesScheduler.timeOfDay }}</b>
+          </div>
+          <div class="scheduler-stat-row">
+            <span>Timezone</span>
+            <b>{{ salesScheduler.timezone }}</b>
+          </div>
+          <div class="scheduler-stat-row">
+            <span>Next run</span>
+            <b>{{ formatDateTime(salesScheduler.nextScheduledAt, salesScheduler.timezone) }}</b>
+          </div>
+          <div class="scheduler-stat-row">
+            <span>Last run</span>
+            <b>{{ formatDateTime(salesScheduler.lastRunFinishedAt || salesScheduler.lastRunStartedAt, salesScheduler.timezone) }}</b>
+          </div>
+          <div class="scheduler-stat-row">
+            <span>Last run status</span>
+            <span class="scheduler-status-pill" [ngClass]="schedulerStatusClass(salesScheduler)">
+              {{ salesScheduler.lastRunStatus === 'NEVER' ? 'Never run' : salesScheduler.lastRunStatus }}
+            </span>
+          </div>
+          <div class="scheduler-stat-row">
+            <span>Manual fetch</span>
+            <b>{{ statusLabel(combined.sales) }}</b>
+          </div>
+          <div *ngIf="salesScheduler.lastRunError || combined.sales.lastError" class="scheduler-error">
+            {{ salesScheduler.lastRunError || combined.sales.lastError }}
+          </div>
+
+          <div class="week-ranges" *ngIf="salesScheduler.lastRunWeekRanges?.length">
+            <div class="section-title">Weeks in last scheduled run</div>
+            <div class="week-range" *ngFor="let week of salesScheduler.lastRunWeekRanges">
+              <span>{{ week.label }}</span>
+              <b>{{ week.startDate }} → {{ week.endDate }}</b>
+            </div>
+          </div>
+        </div>
+
+        <div class="scheduler-settings">
+          <div class="section-title">Sales settings</div>
+          <label class="toggle-row">
+            <input type="checkbox"
+                   [(ngModel)]="salesSchedulerEnabled"
+                   (ngModelChange)="markSalesSchedulerTouched()" />
+            <span>Enable weekly Sales scheduler</span>
+          </label>
+          <div class="settings-fields">
+            <label>
+              <span>Day</span>
+              <select [(ngModel)]="salesSchedulerDayOfWeek" (ngModelChange)="markSalesSchedulerTouched()">
+                <option *ngFor="let day of weekdayOptions" [ngValue]="day.value">{{ day.label }}</option>
+              </select>
+            </label>
+            <label>
+              <span>Time</span>
+              <input type="time"
+                     [(ngModel)]="salesSchedulerTimeOfDay"
+                     (ngModelChange)="markSalesSchedulerTouched()" />
+            </label>
+            <label>
+              <span>Timezone</span>
+              <input type="text"
+                     [(ngModel)]="salesSchedulerTimezone"
+                     (ngModelChange)="markSalesSchedulerTouched()"
+                     placeholder="America/New_York" />
+            </label>
+          </div>
+          <div *ngIf="salesSchedulerValidationError()" class="date-error">
+            {{ salesSchedulerValidationError() }}
+          </div>
+          <button class="btn btn-primary scheduler-save"
+                  (click)="onSaveSalesScheduler()"
+                  [disabled]="isSavingSalesScheduler || !!salesSchedulerValidationError()">
+            <svg *ngIf="!isSavingSalesScheduler" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg>
+            {{ isSavingSalesScheduler ? 'Saving...' : 'Save schedule' }}
+          </button>
+        </div>
+      </div>
+
+      <div *ngIf="activeWeeklyTab === 'inventory' && health.inventoryScheduler as inventoryScheduler" class="scheduler-grid">
+        <div class="scheduler-status">
+          <div class="section-title">Inventory schedule status</div>
+          <div class="scheduler-stat-row">
+            <span>Configured schedule</span>
+            <b>{{ inventoryScheduler.dayLabel }} {{ inventoryScheduler.timeOfDay }}</b>
+          </div>
+          <div class="scheduler-stat-row">
+            <span>Timezone</span>
+            <b>{{ inventoryScheduler.timezone }}</b>
+          </div>
+          <div class="scheduler-stat-row">
+            <span>Next run</span>
+            <b>{{ formatDateTime(inventoryScheduler.nextScheduledAt, inventoryScheduler.timezone) }}</b>
+          </div>
+          <div class="scheduler-stat-row">
+            <span>Last run</span>
+            <b>{{ formatDateTime(inventoryScheduler.lastRunFinishedAt || inventoryScheduler.lastRunStartedAt, inventoryScheduler.timezone) }}</b>
+          </div>
+          <div class="scheduler-stat-row">
+            <span>Last run status</span>
+            <span class="scheduler-status-pill" [ngClass]="schedulerStatusClass(inventoryScheduler)">
+              {{ inventoryScheduler.lastRunStatus === 'NEVER' ? 'Never run' : inventoryScheduler.lastRunStatus }}
+            </span>
+          </div>
+          <div class="scheduler-stat-row">
+            <span>Manual fetch</span>
+            <b>{{ statusLabel(combined.inventory) }}</b>
+          </div>
+          <div *ngIf="inventoryScheduler.lastRunError || combined.inventory.lastError" class="scheduler-error">
+            {{ inventoryScheduler.lastRunError || combined.inventory.lastError }}
+          </div>
+
+          <div class="week-ranges" *ngIf="inventoryScheduler.lastRunWeekRanges?.length">
+            <div class="section-title">Weeks in last scheduled run</div>
+            <div class="week-range" *ngFor="let week of inventoryScheduler.lastRunWeekRanges">
+              <span>{{ week.label }}</span>
+              <b>{{ week.startDate }} → {{ week.endDate }}</b>
+            </div>
+          </div>
+        </div>
+
+        <div class="scheduler-settings">
+          <div class="section-title">Inventory settings</div>
+          <label class="toggle-row">
+            <input type="checkbox"
+                   [(ngModel)]="inventorySchedulerEnabled"
+                   (ngModelChange)="markInventorySchedulerTouched()" />
+            <span>Enable weekly Inventory scheduler</span>
+          </label>
+          <div class="settings-fields">
+            <label>
+              <span>Day</span>
+              <select [(ngModel)]="inventorySchedulerDayOfWeek" (ngModelChange)="markInventorySchedulerTouched()">
+                <option *ngFor="let day of weekdayOptions" [ngValue]="day.value">{{ day.label }}</option>
+              </select>
+            </label>
+            <label>
+              <span>Time</span>
+              <input type="time"
+                     [(ngModel)]="inventorySchedulerTimeOfDay"
+                     (ngModelChange)="markInventorySchedulerTouched()" />
+            </label>
+            <label>
+              <span>Timezone</span>
+              <input type="text"
+                     [(ngModel)]="inventorySchedulerTimezone"
+                     (ngModelChange)="markInventorySchedulerTouched()"
+                     placeholder="America/New_York" />
+            </label>
+          </div>
+          <div *ngIf="inventorySchedulerValidationError()" class="date-error">
+            {{ inventorySchedulerValidationError() }}
+          </div>
+          <button class="btn btn-primary scheduler-save"
+                  (click)="onSaveInventoryScheduler()"
+                  [disabled]="isSavingInventoryScheduler || !!inventorySchedulerValidationError()">
+            <svg *ngIf="!isSavingInventoryScheduler" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg>
+            {{ isSavingInventoryScheduler ? 'Saving...' : 'Save schedule' }}
+          </button>
+        </div>
+      </div>
+    </section>
+  </div>
+</main>
+
+</ng-container>
+</ng-container>
