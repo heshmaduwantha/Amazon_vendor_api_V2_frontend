@@ -131,21 +131,18 @@ export class DashboardComponent implements OnInit, OnDestroy {
     const weekStart = new Date(date);
     weekStart.setUTCDate(date.getUTCDate() - date.getUTCDay());
 
-    let amazonYear = date.getUTCFullYear();
-    let yearStart = this.firstSundayOnOrAfterJanOne(amazonYear);
-    if (date < yearStart) {
-      amazonYear -= 1;
-      yearStart = this.firstSundayOnOrAfterJanOne(amazonYear);
-    }
+    const weekEnd = new Date(weekStart);
+    weekEnd.setUTCDate(weekStart.getUTCDate() + 6);
+    const amazonYear = weekEnd.getUTCFullYear();
+    const yearStart = this.sundayOnOrBeforeJanOne(amazonYear);
 
     const diffDays = Math.floor((weekStart.getTime() - yearStart.getTime()) / 86_400_000);
     return Math.floor(diffDays / 7) + 1;
   }
 
-  private firstSundayOnOrAfterJanOne(year: number): Date {
+  private sundayOnOrBeforeJanOne(year: number): Date {
     const janOne = new Date(Date.UTC(year, 0, 1));
-    const daysUntilSunday = (7 - janOne.getUTCDay()) % 7;
-    janOne.setUTCDate(janOne.getUTCDate() + daysUntilSunday);
+    janOne.setUTCDate(janOne.getUTCDate() - janOne.getUTCDay());
     return janOne;
   }
 
